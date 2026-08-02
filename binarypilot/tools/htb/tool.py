@@ -17,6 +17,7 @@ from agents import RunContextWrapper, function_tool
 
 from binarypilot.config import load_settings
 
+
 API_V4 = "https://labs.hackthebox.com/api/v4"
 API_V5 = "https://labs.hackthebox.com/api/v5"
 
@@ -54,7 +55,7 @@ class HTBClient:
             return {"isSuccess": True, "status_code": 204}
         try:
             data = r.json()
-        except Exception:
+        except ValueError:
             data = {"raw": r.text[:2000], "status_code": r.status_code}
         if r.status_code >= 400:
             return {"isSuccess": False, "status_code": r.status_code, "error": data}
@@ -65,7 +66,7 @@ _client: HTBClient | None = None
 
 
 def client() -> HTBClient:
-    global _client
+    global _client  # noqa: PLW0603
     if _client is None:
         _client = HTBClient()
     return _client
@@ -117,7 +118,9 @@ def htb_spawn_challenge_container(
 @function_tool
 def htb_stop_challenge_container(ctx: RunContextWrapper, challenge_id: int) -> str:
     """Stop a running HackTheBox challenge Docker instance."""
-    return _json(client().request("POST", "/container/stop", json_body={"challenge_id": challenge_id}))
+    return _json(
+        client().request("POST", "/container/stop", json_body={"challenge_id": challenge_id})
+    )
 
 
 @function_tool
@@ -136,7 +139,12 @@ def htb_download_challenge(
     r = c.session.get(url, timeout=300)
     path.write_bytes(r.content)
     return _json(
-        {"isSuccess": True, "path": str(path), "size": len(r.content), "expires_in": meta.get("expires_in")}
+        {
+            "isSuccess": True,
+            "path": str(path),
+            "size": len(r.content),
+            "expires_in": meta.get("expires_in"),
+        }
     )
 
 

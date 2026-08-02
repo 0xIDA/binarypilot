@@ -19,6 +19,7 @@ from agents import RunContextWrapper, function_tool
 
 from binarypilot.config import load_settings
 
+
 SSO_TOKEN_URL = os.environ.get(
     "FLAGYARD_SSO_TOKEN",
     "https://sso.tuwaiq.edu.sa/auth/realms/main/protocol/openid-connect/token",
@@ -31,18 +32,14 @@ class FlagyardClient:
         s = load_settings().platforms
         self.api_base = s.flagyard_api_base.rstrip("/")
         self.session = requests.Session()
-        self.session.headers.update(
-            {"Accept": "application/json", "User-Agent": "binarypilot/1.0"}
-        )
+        self.session.headers.update({"Accept": "application/json", "User-Agent": "binarypilot/1.0"})
         self.access_token = (s.flagyard_access_token or "").strip()
         self.refresh_token = ""
         self.username = (s.flagyard_username or "").strip()
         self.password = (s.flagyard_password or "").strip()
         self.token_expiry = 0.0
         if not self.access_token and not (self.username and self.password):
-            raise RuntimeError(
-                "Set FLAGYARD_USERNAME+FLAGYARD_PASSWORD or FLAGYARD_ACCESS_TOKEN"
-            )
+            raise RuntimeError("Set FLAGYARD_USERNAME+FLAGYARD_PASSWORD or FLAGYARD_ACCESS_TOKEN")
 
     def ensure_token(self) -> str:
         now = time.time()
@@ -57,9 +54,10 @@ class FlagyardClient:
                         "refresh_token": self.refresh_token,
                     }
                 )
-                return self.access_token
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - stale refresh token; fall through to password grant
                 pass
+            else:
+                return self.access_token
         if self.username and self.password:
             self._token_request(
                 {
@@ -122,7 +120,7 @@ class FlagyardClient:
             return {"isSuccess": True, "status_code": 204}
         try:
             data = r.json()
-        except Exception:
+        except ValueError:
             data = {"raw": r.text[:2000], "status_code": r.status_code}
         if r.status_code >= 400:
             return {"isSuccess": False, "status_code": r.status_code, "error": data}
@@ -133,7 +131,7 @@ _client: FlagyardClient | None = None
 
 
 def client() -> FlagyardClient:
-    global _client
+    global _client  # noqa: PLW0603
     if _client is None:
         _client = FlagyardClient()
     return _client
@@ -178,7 +176,9 @@ def flagyard_get_lab(ctx: RunContextWrapper, lab_id: int) -> str:
 @function_tool
 def flagyard_get_challenge(ctx: RunContextWrapper, lab_id: int, challenge_id: str) -> str:
     """Get full FlagYard challenge details (description, files, running instance)."""
-    return _json(_redact_instance(client().request("GET", f"/labs/{lab_id}/challenges/{challenge_id}")))
+    return _json(
+        _redact_instance(client().request("GET", f"/labs/{lab_id}/challenges/{challenge_id}"))
+    )
 
 
 @function_tool
@@ -217,7 +217,10 @@ def flagyard_stop_instance(ctx: RunContextWrapper, lab_id: int, challenge_id: st
 
 @function_tool
 def flagyard_download_files(
-    ctx: RunContextWrapper, lab_id: int, challenge_id: str, output_dir: str = "/workspace/challenge-files"
+    ctx: RunContextWrapper,
+    lab_id: int,
+    challenge_id: str,
+    output_dir: str = "/workspace/challenge-files",
 ) -> str:
     """Download FlagYard challenge attachments to output_dir inside the sandbox."""
     c = client()
@@ -242,13 +245,15 @@ def flagyard_download_files(
             path = out / Path(name).name
             path.write_bytes(r.content)
             saved.append({"file": name, "path": str(path), "size": len(r.content)})
-        except Exception as e:
+        except (OSError, requests.RequestException) as e:
             saved.append({"file": name, "error": str(e)})
     return _json({"isSuccess": True, "files": saved})
 
 
 @function_tool
-def flagyard_search_challenges(ctx: RunContextWrapper, query: str, lab_type: str = "training") -> str:
+def flagyard_search_challenges(
+    ctx: RunContextWrapper, query: str, lab_type: str = "training"
+) -> str:
     """Search FlagYard challenge names across public labs (case-insensitive substring)."""
     c = client()
     q = query.lower().strip()
@@ -268,15 +273,15 @@ def flagyard_search_challenges(ctx: RunContextWrapper, query: str, lab_type: str
     for lab in labs:
         lid = lab.get("id")
         lab_data = (c.request("GET", f"/labs/{lid}/public") or {}).get("data") or {}
-        for ch in lab_data.get("challenges") or []:
-            if q in (ch.get("name") or "").lower() or q in str(ch.get("id", "")).lower():
-                results.append(
-                    {
-                        "lab_id": lid,
-                        "lab_name": lab_data.get("nameEn") or lab.get("nameEn"),
-                        "challenge": ch,
-                    }
-                )
+        results.extend(
+            {
+                "lab_id": lid,
+                "lab_name": lab_data.get("nameEn") or lab.get("nameEn"),
+                "challenge": ch,
+            }
+            for ch in lab_data.get("challenges") or []
+            if q in (ch.get("name") or "").lower() or q in str(ch.get("id", "")).lower()
+        )
     return _json({"query": query, "count": len(results), "results": results})
 
 

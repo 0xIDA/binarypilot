@@ -226,7 +226,7 @@ def _function_tool_with_error_result(tool: FunctionTool) -> FunctionTool:
     async def invoke(ctx: Any, raw_input: str) -> Any:
         try:
             return await _bound_result(await invoke_tool(ctx, raw_input))
-        except Exception as exc:  # noqa: BLE001 - tool errors should be model-visible results.
+        except Exception as exc:
             logger.debug("Tool %s failed; returning error as result", tool.name, exc_info=True)
             return _format_tool_error(exc)
 
@@ -241,7 +241,7 @@ def _custom_tool_as_function_tool(tool: CustomTool) -> FunctionTool:
             return f"`{_custom_tool_input_field(tool)}` must be a non-empty string."
         try:
             return await _bound_result(await tool.on_invoke_tool(ctx, custom_input))
-        except Exception as exc:  # noqa: BLE001 - matches SDK CustomTool error-as-result behavior.
+        except Exception as exc:
             logger.debug("Tool %s failed; returning error as result", tool.name, exc_info=True)
             return _format_tool_error(exc)
 
@@ -558,7 +558,8 @@ def registered_agent_tools() -> tuple[Tool, ...]:
 
 
 def _register_ctf_tools() -> None:
-    from binarypilot.tools.flagyard import (
+    # Lazy imports: factory import already pulls the whole SDK.
+    from binarypilot.tools.flagyard import (  # noqa: PLC0415
         flagyard_download_files,
         flagyard_get_challenge,
         flagyard_get_lab,
@@ -568,7 +569,7 @@ def _register_ctf_tools() -> None:
         flagyard_stop_instance,
         flagyard_submit_flag,
     )
-    from binarypilot.tools.htb import (
+    from binarypilot.tools.htb import (  # noqa: PLC0415
         htb_download_challenge,
         htb_get_challenge_info,
         htb_list_challenges,

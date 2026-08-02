@@ -11,6 +11,7 @@ from binarypilot.tools.flagyard.tool import (
     flagyard_submit_flag,
 )
 
+
 __all__ = [
     "flagyard_download_files",
     "flagyard_get_challenge",

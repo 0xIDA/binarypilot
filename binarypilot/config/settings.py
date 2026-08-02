@@ -79,14 +79,20 @@ class ContextSettings(BaseSettings):
     model_config = _BASE_CONFIG
 
     auto_compact: bool = Field(default=True, alias="BINARYPILOT_CONTEXT_AUTO_COMPACT")
-    compact_buffer_tokens: int = Field(default=20_000, gt=0, alias="BINARYPILOT_CONTEXT_BUFFER_TOKENS")
+    compact_buffer_tokens: int = Field(
+        default=20_000, gt=0, alias="BINARYPILOT_CONTEXT_BUFFER_TOKENS"
+    )
     keep_tokens: int = Field(default=8_000, gt=0, alias="BINARYPILOT_CONTEXT_KEEP_TOKENS")
     fallback_context_tokens: int = Field(
         default=200_000, gt=0, alias="BINARYPILOT_CONTEXT_FALLBACK_TOKENS"
     )
     summary_max_tokens: int = Field(default=4_096, gt=0, alias="BINARYPILOT_CONTEXT_SUMMARY_TOKENS")
-    tool_output_max_tokens: int = Field(default=8_000, gt=0, alias="BINARYPILOT_TOOL_OUTPUT_MAX_TOKENS")
-    tool_output_max_lines: int = Field(default=2_000, gt=0, alias="BINARYPILOT_TOOL_OUTPUT_MAX_LINES")
+    tool_output_max_tokens: int = Field(
+        default=8_000, gt=0, alias="BINARYPILOT_TOOL_OUTPUT_MAX_TOKENS"
+    )
+    tool_output_max_lines: int = Field(
+        default=2_000, gt=0, alias="BINARYPILOT_TOOL_OUTPUT_MAX_LINES"
+    )
     # Floor above the truncation-notice size so a preview always fits.
     tool_output_max_bytes: int = Field(
         default=50 * 1024, ge=1024, alias="BINARYPILOT_TOOL_OUTPUT_MAX_BYTES"

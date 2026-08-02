@@ -11,6 +11,7 @@ from binarypilot.tools.htb.tool import (
     htb_submit_machine_flag,
 )
 
+
 __all__ = [
     "htb_download_challenge",
     "htb_get_challenge_info",
