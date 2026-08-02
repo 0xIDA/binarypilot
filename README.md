@@ -1,0 +1,320 @@
+<p align="center">
+  <a href="https://binarypilot.ai/">
+    <img src="https://github.com/usebinarypilot/.github/raw/main/imgs/cover.png" alt="BinaryPilot Banner" width="100%">
+  </a>
+</p>
+
+<div align="center">
+
+# BinaryPilot
+
+### The open-source AI pentesting tool. Autonomous AI hackers that find and fix your app’s vulnerabilities.
+
+<br/>
+
+
+<a href="https://docs.binarypilot.ai"><img src="https://img.shields.io/badge/Docs-docs.binarypilot.ai-2b9246?style=for-the-badge&logo=gitbook&logoColor=white" alt="Docs"></a>
+<a href="https://binarypilot.ai"><img src="https://img.shields.io/badge/Website-binarypilot.ai-f0f0f0?style=for-the-badge&logoColor=000000" alt="Website"></a>
+[![](https://dcbadge.limes.pink/api/server/binarypilot-ai)](https://discord.gg/binarypilot-ai)
+
+<a href="https://deepwiki.com/usebinarypilot/binarypilot"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+<a href="https://github.com/usebinarypilot/binarypilot"><img src="https://img.shields.io/github/stars/usebinarypilot/binarypilot?style=flat-square" alt="GitHub Stars"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-3b82f6?style=flat-square" alt="License"></a>
+<a href="https://pypi.org/project/binarypilot-agent/"><img src="https://img.shields.io/pypi/v/binarypilot-agent?style=flat-square" alt="PyPI Version"></a>
+
+
+<a href="https://discord.gg/binarypilot-ai"><img src="https://github.com/usebinarypilot/.github/raw/main/imgs/Discord.png" height="40" alt="Join Discord"></a>
+<a href="https://x.com/binarypilot_ai"><img src="https://github.com/usebinarypilot/.github/raw/main/imgs/X.png" height="40" alt="Follow on X"></a>
+
+
+<a href="https://trendshift.io/repositories/15362?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-15362" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/15362/weekly" alt="usebinarypilot%2Fbinarypilot | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/15362" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15362" alt="usebinarypilot/binarypilot | Trendshift" width="250" height="55"/></a>
+
+</div>
+
+
+> [!TIP]
+> **New!** BinaryPilot integrates seamlessly with GitHub Actions and CI/CD pipelines. Automatically scan for vulnerabilities on every pull request and block insecure code before it reaches production - [Get started with no setup required](https://app.binarypilot.ai).
+
+---
+
+
+## BinaryPilot Overview
+
+BinaryPilot are autonomous AI penetration testing agents that act just like real hackers - they run your code dynamically, find vulnerabilities, and validate them through actual proofs-of-concept. Built for developers and security teams who need fast, accurate security testing without the overhead of manual pentesting or the false positives of static analysis tools.
+
+**Key Capabilities:**
+
+- **Full pentesting toolkit** - reconnaissance, exploitation, and validation out of the box
+- **Multi-agent orchestration** - teams of AI pentesters that collaborate and scale
+- **Real exploit validation** - working PoCs, not false positives like legacy vulnerability scanners
+- **Developer‑first CLI** - actionable findings with remediation guidance
+- **Auto‑fix & reporting** - generate patches and compliance-ready pentest reports
+
+
+<br>
+
+
+<div align="center">
+  <a href="https://binarypilot.ai">
+    <img src=".github/screenshot.png" alt="BinaryPilot Demo" width="1000" style="border-radius: 16px;">
+  </a>
+</div>
+
+
+## Use Cases
+
+- **Application Security Testing** - Detect and validate critical vulnerabilities in your applications
+- **Rapid Penetration Testing** - Get penetration tests done in hours, not weeks, with compliance reports
+- **Bug Bounty Automation** - Automate bug bounty research and generate PoCs for faster reporting
+- **CI/CD Integration** - Run tests in CI/CD to block vulnerabilities before reaching production
+
+## 🚀 Quick Start
+
+**Prerequisites:**
+- Docker (running)
+- An LLM API key from any [supported provider](https://docs.binarypilot.ai/llm-providers/overview) (OpenAI, Anthropic, Google, etc.)
+
+### Installation & First Scan
+
+```bash
+# Install BinaryPilot
+curl -sSL https://binarypilot.ai/install | bash
+
+# Configure your AI provider
+export BINARYPILOT_LLM="openai/gpt-5.4"
+export LLM_API_KEY="your-api-key"
+
+# Run your first security assessment
+binarypilot --target ./app-directory
+```
+
+> [!NOTE]
+> First run automatically pulls the sandbox Docker image. Results are saved to `binarypilot_runs/<run-name>`
+
+---
+
+## ☁️ BinaryPilot Platform
+
+Try the BinaryPilot full-stack penetration testing platform at **[app.binarypilot.ai](https://app.binarypilot.ai)** - sign up for free, connect your repos and domains, and launch a pentest in minutes.
+
+- **Validated findings with PoCs** - every vulnerability includes a working proof-of-concept exploit and reproduction steps
+- **One-click autofix** - AI-generated security patches as ready-to-merge pull requests
+- **Continuous pentesting** - always-on vulnerability scanning that keeps pace with your deployments
+- **DevSecOps integrations** - GitHub, GitLab, Bitbucket, Slack, Jira, Linear, and CI/CD pipelines
+- **Continuous learning** - AI that builds on past findings, adapts to your codebase, and reduces false positives over time
+
+[**Start your first pentest →**](https://app.binarypilot.ai)
+
+---
+
+## ✨ Features
+
+### Agentic Pentesting Tools
+
+BinaryPilot agents come equipped with a comprehensive offensive security toolkit - the same tools used by professional penetration testers and ethical hackers:
+
+- **HTTP Interception Proxy** - Full request/response manipulation and analysis with Caido
+- **Browser Exploitation** - Automated browser for testing XSS, CSRF, clickjacking, and auth bypass flows
+- **Shell & Command Execution** - Interactive terminal for exploit development and post-exploitation
+- **Custom Exploit Runtime** - Python sandbox for writing and validating proof-of-concept exploits
+- **Reconnaissance & OSINT** - Automated attack surface mapping, subdomain enumeration, and fingerprinting
+- **Static & Dynamic Code Analysis** - SAST + DAST capabilities for comprehensive application security testing
+- **Vulnerability Knowledge Base** - Structured findings with CVSS scoring and OWASP classification
+
+### Comprehensive Vulnerability Scanner
+
+BinaryPilot identifies, validates, and exploits a wide range of security vulnerabilities across the OWASP Top 10 and beyond:
+
+- **Broken Access Control** - IDOR, privilege escalation, auth bypass
+- **Injection Attacks** - SQL injection, NoSQL injection, OS command injection, SSTI
+- **Server-Side Vulnerabilities** - SSRF, XXE, insecure deserialization, RCE
+- **Client-Side Attacks** - XSS (stored/reflected/DOM), prototype pollution, CSRF
+- **Business Logic Flaws** - Race conditions, payment manipulation, workflow bypass
+- **Authentication & Session** - JWT attacks, session fixation, credential stuffing vectors
+- **Infrastructure & Cloud** - Misconfigurations, exposed services, cloud security issues
+- **API Security** - Broken authentication, mass assignment, rate limiting bypass
+
+### Graph of Agents (Multi-Agent Pentesting)
+
+Advanced multi-agent orchestration for comprehensive automated penetration testing:
+
+- **Distributed Pentesting** - Specialized AI agents for recon, exploitation, and post-exploitation
+- **Scalable Security Testing** - Parallel execution across multiple targets for fast, comprehensive coverage
+- **Dynamic Coordination** - Agents share discoveries, chain vulnerabilities, and collaborate like a red team
+
+---
+
+## 🖥️ Local Web Viewer
+
+Every scan writes its results to disk as it runs. Bring them up in a local dashboard with a single command:
+
+```bash
+# Open the most recent run
+binarypilot view
+
+# ...or open a specific run by name
+binarypilot view my-run-name
+```
+
+`binarypilot view` starts a lightweight local server (bound to `127.0.0.1` on a random port) and opens your browser to a private, tokened link. Nothing leaves your machine: the dashboard reads the run's files straight off disk, with no cloud account or upload required. The UI ships prebuilt with BinaryPilot, so there is no extra install and no JS build step.
+
+### What's in the dashboard
+
+- **Overview**: run status, target, and a severity breakdown of everything found so far.
+- **Vulnerabilities**: each validated finding with its severity, details, and reproduction steps.
+- **Agent graph**: a live map of the multi-agent team, showing which agent is doing what.
+- **Steering**: send instructions to a live scan from the browser to redirect the agents mid-run.
+- **History**: browse past runs on this machine and jump between them.
+- **Reports**: generate a shareable report and email it to yourself or your team.
+
+---
+
+## Usage Examples
+
+### Basic Usage
+
+```bash
+# Scan a local codebase
+binarypilot --target ./app-directory
+
+# Security review of a GitHub repository
+binarypilot --target https://github.com/org/repo
+
+# Black-box web application assessment
+binarypilot --target https://your-app.com
+```
+
+### Advanced Testing Scenarios
+
+```bash
+# Grey-box authenticated testing
+binarypilot --target https://your-app.com --instruction "Perform authenticated testing using credentials: user:pass"
+
+# Multi-target testing (source code + deployed app)
+binarypilot -t https://github.com/org/app -t https://your-app.com
+
+# Targets from a file, one target per non-empty, non-comment line
+binarypilot --target-list ./targets.txt
+
+# White-box source-aware scan (local repository)
+binarypilot --target ./app-directory --scan-mode standard
+
+# Focused testing with custom instructions
+binarypilot --target api.your-app.com --instruction "Focus on business logic flaws and IDOR vulnerabilities"
+
+# Provide detailed instructions through file (e.g., rules of engagement, scope, exclusions)
+binarypilot --target api.your-app.com --instruction-file ./instruction.md
+
+# Force PR diff-scope against a specific base branch
+binarypilot -n --target ./ --scan-mode quick --scope-mode diff --diff-base origin/main
+```
+
+### Headless Mode
+
+Run BinaryPilot programmatically without interactive UI using the `-n/--non-interactive` flag - perfect for servers and automated jobs. The CLI prints real-time vulnerability findings and the final report before exiting. Exits with non-zero code when vulnerabilities are found.
+
+```bash
+binarypilot -n --target https://your-app.com
+```
+
+### CI/CD (GitHub Actions)
+
+BinaryPilot can be added to your pipeline to run a security test on pull requests with a lightweight GitHub Actions workflow:
+
+```yaml
+name: binarypilot-penetration-test
+
+on:
+  pull_request:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install BinaryPilot
+        run: curl -sSL https://binarypilot.ai/install | bash
+
+      - name: Run BinaryPilot
+        env:
+          BINARYPILOT_LLM: ${{ secrets.BINARYPILOT_LLM }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+
+        run: binarypilot -n -t ./ --scan-mode quick
+```
+
+> [!TIP]
+> In CI pull request runs, BinaryPilot automatically scopes quick reviews to changed files.
+> If diff-scope cannot resolve, ensure checkout uses full history (`fetch-depth: 0`) or pass
+> `--diff-base` explicitly.
+
+### Configuration
+
+```bash
+export BINARYPILOT_LLM="openai/gpt-5.4"
+export LLM_API_KEY="your-api-key"
+
+# Optional
+export LLM_API_BASE="your-api-base-url"  # if using a local model, e.g. Ollama, LMStudio
+export PERPLEXITY_API_KEY="your-api-key"  # for search capabilities
+export BINARYPILOT_REASONING_EFFORT="high"  # control thinking effort (default: high, quick scan: medium)
+```
+
+> [!NOTE]
+> BinaryPilot automatically saves your configuration to `~/.binarypilot/cli-config.json`, so you don't have to re-enter it on every run.
+
+#### Sign in with a ChatGPT subscription
+
+Instead of a metered API key, you can run BinaryPilot on your ChatGPT Plus/Pro subscription:
+
+```bash
+binarypilot auth login chatgpt      # sign in with your ChatGPT account
+
+export BINARYPILOT_LLM="chatgpt/gpt-5.4"   # chatgpt/<model> runs on the subscription
+binarypilot --target ./app-directory
+
+binarypilot auth status             # show the active sign-in
+binarypilot auth logout             # forget the sign-in
+```
+
+**Recommended models for best results:**
+
+- [OpenAI GPT-5.4](https://openai.com/api/) - `openai/gpt-5.4`
+- [Anthropic Claude Sonnet 4.6](https://claude.com/platform/api) - `anthropic/claude-sonnet-4-6`
+- [Google Gemini 3 Pro Preview](https://cloud.google.com/vertex-ai) - `vertex_ai/gemini-3-pro-preview`
+
+See the [LLM Providers documentation](https://docs.binarypilot.ai/llm-providers/overview) for all supported providers including Vertex AI, Bedrock, Azure, and local models.
+
+## Enterprise Pentesting
+
+Get the same BinaryPilot experience with [enterprise-grade](https://binarypilot.ai/demo) controls: SSO (SAML/OIDC), custom compliance-ready penetration testing reports (SOC 2, ISO 27001, PCI DSS), dedicated support & SLA, custom deployment options (VPC/self-hosted), BYOK model support, and tailored AI pentesting agents optimized for your environment. [Learn more](https://binarypilot.ai/demo).
+
+## Documentation
+
+Full documentation is available at **[docs.binarypilot.ai](https://docs.binarypilot.ai)** - including detailed guides for usage, CI/CD integrations, skills, and advanced configuration.
+
+## Contributing
+
+We welcome contributions of code, docs, and new skills - check out our [Contributing Guide](https://docs.binarypilot.ai/contributing) to get started or open a [pull request](https://github.com/usebinarypilot/binarypilot/pulls)/[issue](https://github.com/usebinarypilot/binarypilot/issues).
+
+## Join Our Community
+
+Have questions? Found a bug? Want to contribute? **[Join our Discord!](https://discord.gg/binarypilot-ai)**
+
+## Support the Project
+
+**Love BinaryPilot?** Give us a ⭐ on GitHub!
+
+## Acknowledgements
+
+BinaryPilot builds on the incredible work of open-source projects like [LiteLLM](https://github.com/BerriAI/litellm), [Caido](https://github.com/caido/caido), [Nuclei](https://github.com/projectdiscovery/nuclei), [Playwright](https://github.com/microsoft/playwright), and [Textual](https://github.com/Textualize/textual). Huge thanks to their maintainers!
+
+
+> [!WARNING]
+> Only test apps you own or have permission to test. You are responsible for using BinaryPilot ethically and legally.
+
+</div>

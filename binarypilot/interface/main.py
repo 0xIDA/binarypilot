@@ -1,0 +1,1110 @@
+#!/usr/bin/env python3
+"""
+BinaryPilot Agent Interface
+"""
+
+import argparse
+import asyncio
+import os
+import shutil
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+from binarypilot.config import (
+    apply_config_override,
+    codex,
+    load_settings,
+    persist_current,
+)
+from binarypilot.config.settings import DEFAULT_MAX_TURNS
+from binarypilot.core.paths import run_dir_for, runtime_state_dir
+from binarypilot.interface.update_check import (
+    is_binary_install,
+    notify_update,
+    prompt_update_if_available,
+    self_update,
+    start_background_check,
+)
+from binarypilot.interface.utils import (
+    assign_workspace_subdirs,
+    build_final_stats_text,
+    check_docker_connection,
+    check_mountable_dir,
+    clone_repository,
+    collect_local_sources,
+    dedupe_local_targets,
+    generate_run_name,
+    image_exists,
+    infer_target_type,
+    is_whitebox_scan,
+    process_pull_line,
+    read_target_list_file,
+    resolve_diff_scope_context,
+    rewrite_localhost_targets,
+    validate_config_file,
+)
+from binarypilot.telemetry import posthog, scarf
+from binarypilot.telemetry.logging import configure_dependency_logging
+
+
+HOST_GATEWAY_HOSTNAME = "host.docker.internal"
+BEDROCK_MODEL_PREFIX = "bedrock/"
+BEDROCK_MISSING_MODULE_ERROR = "No module named 'boto3'"
+BEDROCK_EXTRA_HINT = (
+    'Bedrock support is optional. Install it with: pipx install "binarypilot-agent[bedrock]"'
+)
+VERTEX_MODEL_MARKER = "vertex"
+VERTEX_MISSING_MODULE_ERROR = "No module named 'google"
+VERTEX_EXTRA_HINT = (
+    'Vertex AI support is optional. Install it with: pipx install "binarypilot-agent[vertex]"'
+)
+
+
+import logging  # noqa: E402
+
+
+logger = logging.getLogger(__name__)
+
+
+def validate_environment() -> None:
+    logger.info("Validating environment")
+    console = Console()
+    missing_required_vars = []
+    missing_optional_vars = []
+
+    settings = load_settings()
+
+    if codex.subscription_model(settings.llm.model):
+        if not codex.is_authenticated():
+            console.print(
+                f"[red]BINARYPILOT_LLM={settings.llm.model} uses your ChatGPT subscription, "
+                "but you're not signed in.[/] Run [cyan]binarypilot auth login chatgpt[/] first."
+            )
+            sys.exit(1)
+        logger.info("Environment OK (ChatGPT subscription)")
+        return
+
+    if not settings.llm.model:
+        missing_required_vars.append("BINARYPILOT_LLM")
+
+    if not settings.llm.api_key:
+        missing_optional_vars.append("LLM_API_KEY")
+
+    if not settings.llm.api_base:
+        missing_optional_vars.append("LLM_API_BASE")
+
+    if not settings.integrations.perplexity_api_key:
+        missing_optional_vars.append("PERPLEXITY_API_KEY")
+
+    if missing_required_vars:
+        error_text = Text()
+        error_text.append("MISSING REQUIRED ENVIRONMENT VARIABLES", style="bold red")
+        error_text.append("\n\n", style="white")
+
+        for var in missing_required_vars:
+            error_text.append(f"• {var}", style="bold yellow")
+            error_text.append(" is not set\n", style="white")
+
+        if missing_optional_vars:
+            error_text.append("\nOptional environment variables:\n", style="dim white")
+            for var in missing_optional_vars:
+                error_text.append(f"• {var}", style="dim yellow")
+                error_text.append(" is not set\n", style="dim white")
+
+        error_text.append("\nRequired environment variables:\n", style="white")
+        for var in missing_required_vars:
+            if var == "BINARYPILOT_LLM":
+                error_text.append("• ", style="white")
+                error_text.append("BINARYPILOT_LLM", style="bold cyan")
+                error_text.append(
+                    " - Model name to use (e.g., 'openai/gpt-5.4' or "
+                    "'anthropic/claude-opus-4-7')\n",
+                    style="white",
+                )
+
+        if missing_optional_vars:
+            error_text.append("\nOptional environment variables:\n", style="white")
+            for var in missing_optional_vars:
+                if var == "LLM_API_KEY":
+                    error_text.append("• ", style="white")
+                    error_text.append("LLM_API_KEY", style="bold cyan")
+                    error_text.append(
+                        " - API key for the LLM provider "
+                        "(not needed for local models, Vertex AI, AWS, etc.)\n",
+                        style="white",
+                    )
+                elif var == "LLM_API_BASE":
+                    error_text.append("• ", style="white")
+                    error_text.append("LLM_API_BASE", style="bold cyan")
+                    error_text.append(
+                        " - Custom API base URL if using local models (e.g., Ollama, LMStudio)\n",
+                        style="white",
+                    )
+                elif var == "PERPLEXITY_API_KEY":
+                    error_text.append("• ", style="white")
+                    error_text.append("PERPLEXITY_API_KEY", style="bold cyan")
+                    error_text.append(
+                        " - API key for Perplexity AI web search (enables real-time research)\n",
+                        style="white",
+                    )
+                elif var == "BINARYPILOT_REASONING_EFFORT":
+                    error_text.append("• ", style="white")
+                    error_text.append("BINARYPILOT_REASONING_EFFORT", style="bold cyan")
+                    error_text.append(
+                        " - Reasoning effort level: none, minimal, low, medium, high, xhigh, "
+                        "max (default: high)\n",
+                        style="white",
+                    )
+
+        error_text.append("\nExample setup:\n", style="white")
+        error_text.append("export BINARYPILOT_LLM='openai/gpt-5.4'\n", style="dim white")
+
+        if missing_optional_vars:
+            for var in missing_optional_vars:
+                if var == "LLM_API_KEY":
+                    error_text.append(
+                        "export LLM_API_KEY='your-api-key-here'  "
+                        "# not needed for local models, Vertex AI, AWS, etc.\n",
+                        style="dim white",
+                    )
+                elif var == "LLM_API_BASE":
+                    error_text.append(
+                        "export LLM_API_BASE='http://localhost:11434'  "
+                        "# needed for local models only\n",
+                        style="dim white",
+                    )
+                elif var == "PERPLEXITY_API_KEY":
+                    error_text.append(
+                        "export PERPLEXITY_API_KEY='your-perplexity-key-here'\n", style="dim white"
+                    )
+                elif var == "BINARYPILOT_REASONING_EFFORT":
+                    error_text.append(
+                        "export BINARYPILOT_REASONING_EFFORT='high'\n",
+                        style="dim white",
+                    )
+
+        panel = Panel(
+            error_text,
+            title="[bold white]BINARYPILOT",
+            title_align="left",
+            border_style="red",
+            padding=(1, 2),
+        )
+
+        logger.debug("Missing required env vars: %s", missing_required_vars)
+        console.print("\n")
+        console.print(panel)
+        console.print()
+        sys.exit(1)
+    logger.info(
+        "Environment OK (optional missing: %s)",
+        missing_optional_vars or "none",
+    )
+
+
+def check_docker_installed() -> None:
+    if shutil.which("docker") is None:
+        logger.debug("Docker CLI not found in PATH")
+        console = Console()
+        error_text = Text()
+        error_text.append("DOCKER NOT INSTALLED", style="bold red")
+        error_text.append("\n\n", style="white")
+        error_text.append("The 'docker' CLI was not found in your PATH.\n", style="white")
+        error_text.append(
+            "Please install Docker and ensure the 'docker' command is available.\n\n", style="white"
+        )
+
+        panel = Panel(
+            error_text,
+            title="[bold white]BINARYPILOT",
+            title_align="left",
+            border_style="red",
+            padding=(1, 2),
+        )
+        console.print("\n", panel, "\n")
+        sys.exit(1)
+    logger.debug("Docker CLI present")
+
+
+def _exception_messages(exc: BaseException) -> tuple[str, ...]:
+    messages: list[str] = []
+    seen: set[int] = set()
+    stack: list[BaseException] = [exc]
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        messages.append(str(current))
+        if current.__cause__ is not None:
+            stack.append(current.__cause__)
+        if current.__context__ is not None:
+            stack.append(current.__context__)
+    return tuple(messages)
+
+
+def _provider_import_hint(exc: BaseException, model: str) -> str | None:
+    """Return an install hint when *exc* is a missing provider dependency.
+
+    Bedrock and Vertex AI ship as optional extras: Bedrock needs ``boto3`` and
+    Vertex AI needs ``google-auth``. When either is absent, litellm may raise an
+    ``ImportError``/``ModuleNotFoundError`` directly or wrap it in a connection
+    error. Map the missing module back to the matching extra so the user knows
+    what to install. Returns ``None`` for any unrelated error.
+    """
+    model_name = model.lower()
+    messages = _exception_messages(exc)
+    if any(
+        BEDROCK_MISSING_MODULE_ERROR in message for message in messages
+    ) and model_name.startswith(BEDROCK_MODEL_PREFIX):
+        return BEDROCK_EXTRA_HINT
+    if (
+        any(VERTEX_MISSING_MODULE_ERROR in message for message in messages)
+        and VERTEX_MODEL_MARKER in model_name
+    ):
+        return VERTEX_EXTRA_HINT
+    return None
+
+
+def _subscription_error_hint(exc: BaseException) -> str | None:
+    """Return an actionable hint for a known ChatGPT-subscription error, or None."""
+    if not codex.subscription_model(load_settings().llm.model):
+        return None
+    joined = " ".join(_exception_messages(exc)).lower()
+    if "not supported when using codex with a chatgpt account" in joined:
+        return (
+            "This model isn't available on your ChatGPT subscription. "
+            "Set BINARYPILOT_LLM to a model your plan includes (e.g. chatgpt/gpt-5.4)."
+        )
+    if (
+        "error code: 401" in joined
+        or "http 401" in joined
+        or "unauthorized" in joined
+        or "invalid_grant" in joined
+    ):
+        return (
+            "Your ChatGPT sign-in has expired or was revoked. Sign in again:\n"
+            "  binarypilot auth login chatgpt"
+        )
+    return None
+
+
+async def warm_up_llm(show_model_warning: bool = True) -> None:
+    from agents.model_settings import ModelSettings
+    from agents.models.interface import ModelTracing
+
+    from binarypilot.config.models import (
+        RECOMMENDED_MODEL_NAMES,
+        BinaryPilotProvider,
+        configure_sdk_model_defaults,
+        is_known_openai_bare_model,
+        is_recommended_or_frontier_model,
+    )
+    from binarypilot.core.inputs import make_model_settings
+
+    console = Console()
+    logger.info("Warming up LLM connection")
+
+    raw_model = ""
+    try:
+        settings = load_settings()
+        configure_sdk_model_defaults(settings)
+        llm = settings.llm
+        raw_model = (llm.model or "").strip()
+
+        if (
+            raw_model
+            and "/" not in raw_model
+            and not is_known_openai_bare_model(raw_model)
+            and not llm.api_base
+        ):
+            warn_text = Text()
+            warn_text.append("UNKNOWN MODEL NAME", style="bold yellow")
+            warn_text.append("\n\n", style="white")
+            warn_text.append(f"'{raw_model}'", style="bold cyan")
+            warn_text.append(
+                " is not a known OpenAI model. Bare names route to OpenAI by default.\n"
+                "If you meant a non-OpenAI provider, use the '",
+                style="white",
+            )
+            warn_text.append("<provider>/<model>", style="bold cyan")
+            warn_text.append(
+                "' form, e.g. 'anthropic/claude-opus-4-7', 'deepseek/deepseek-v4-pro'.",
+                style="white",
+            )
+            console.print(
+                Panel(
+                    warn_text,
+                    title="[bold white]BINARYPILOT",
+                    title_align="left",
+                    border_style="yellow",
+                    padding=(1, 2),
+                ),
+            )
+            sys.exit(1)
+
+        if show_model_warning and raw_model and not is_recommended_or_frontier_model(raw_model):
+            warn_text = Text()
+            warn_text.append("MODEL QUALITY WARNING", style="bold yellow")
+            warn_text.append("\n\n", style="white")
+            warn_text.append(f"'{raw_model}'", style="bold cyan")
+            warn_text.append(
+                " is not a recommended frontier model for BinaryPilot.\nSecurity scans work best with:\n",
+                style="white",
+            )
+            for recommended_model in RECOMMENDED_MODEL_NAMES:
+                warn_text.append(f"• {recommended_model}\n", style="bold cyan")
+            warn_text.append(
+                "\nYou can continue, but weaker models may miss vulnerabilities "
+                "or produce lower-quality findings.",
+                style="white",
+            )
+            console.print(
+                Panel(
+                    warn_text,
+                    title="[bold white]BINARYPILOT",
+                    title_align="left",
+                    border_style="yellow",
+                    padding=(1, 2),
+                ),
+            )
+
+        model = BinaryPilotProvider().get_model(raw_model)
+        await asyncio.wait_for(
+            model.get_response(
+                system_instructions="You are a helpful assistant.",
+                input="Reply with just 'OK'.",
+                model_settings=make_model_settings(
+                    None,
+                    model_name=raw_model,
+                    request_timeout=llm.timeout,
+                    prompt_cache=False,
+                    extra_headers=llm.extra_headers,
+                ),
+                tools=[],
+                output_schema=None,
+                handoffs=[],
+                tracing=ModelTracing.DISABLED,
+                previous_response_id=None,
+                conversation_id=None,
+                prompt=None,
+            ),
+            timeout=llm.timeout,
+        )
+        logger.info("LLM warm-up succeeded for model %s", (llm.model or "").strip())
+
+        if settings.dedupe.model:
+            from binarypilot.report.dedupe import _dedupe_extra_args
+
+            dedupe_model = settings.dedupe.model.strip()
+            raw_model = dedupe_model
+            deduper = BinaryPilotProvider().get_model(dedupe_model)
+            # Match the runtime path: send the dedupe key/endpoint per call so a
+            # separate-provider dedupe model authenticates during warm-up too.
+            deduper_extra = _dedupe_extra_args(settings.dedupe)
+            # A dedicated dedupe model may route to another provider, which must
+            # never receive the main endpoint's headers; it has its own
+            # DEDUPE_LLM_EXTRA_HEADERS.
+            deduper_settings = make_model_settings(
+                None,
+                model_name=dedupe_model,
+                request_timeout=llm.timeout,
+                prompt_cache=False,
+                extra_headers=settings.dedupe.extra_headers,
+            )
+            if deduper_extra:
+                merged = {**(deduper_settings.extra_args or {}), **deduper_extra}
+                deduper_settings = deduper_settings.resolve(ModelSettings(extra_args=merged))
+            await asyncio.wait_for(
+                deduper.get_response(
+                    system_instructions="You are a helpful assistant.",
+                    input="Reply with just 'OK'.",
+                    model_settings=deduper_settings,
+                    tools=[],
+                    output_schema=None,
+                    handoffs=[],
+                    tracing=ModelTracing.DISABLED,
+                    previous_response_id=None,
+                    conversation_id=None,
+                    prompt=None,
+                ),
+                timeout=llm.timeout,
+            )
+            logger.info("LLM warm-up succeeded for dedupe model %s", dedupe_model)
+
+    except Exception as e:
+        logger.debug("LLM warm-up failed", exc_info=True)
+        error_text = Text()
+        sub_hint = _subscription_error_hint(e)
+        if sub_hint is not None:
+            # The model/backend answered with a clear, actionable rejection —
+            # show that instead of a generic "connection failed".
+            border_style = "yellow"
+            error_text.append("MODEL NOT AVAILABLE ON SUBSCRIPTION", style="bold yellow")
+            error_text.append("\n\n", style="white")
+            error_text.append(f"{sub_hint}\n", style="white")
+            error_text.append(f"\nDetails: {e}", style="dim white")
+        else:
+            border_style = "red"
+            error_text.append("LLM CONNECTION FAILED", style="bold red")
+            error_text.append("\n\n", style="white")
+            error_text.append(
+                "Could not establish connection to the language model.\n", style="white"
+            )
+            error_text.append("Please check your configuration and try again.\n", style="white")
+            hint = _provider_import_hint(e, raw_model)
+            if hint is not None:
+                error_text.append(f"\n{hint}\n", style="bold yellow")
+            error_text.append(f"\nError: {e}", style="dim white")
+
+        panel = Panel(
+            error_text,
+            title="[bold white]BINARYPILOT",
+            title_align="left",
+            border_style=border_style,
+            padding=(1, 2),
+        )
+
+        console.print("\n")
+        console.print(panel)
+        console.print()
+        sys.exit(1)
+
+
+def get_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("binarypilot-agent")
+    except Exception:
+        return "unknown"
+
+
+def _positive_budget(value: str) -> float:
+    try:
+        budget = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid float value: {value!r}") from exc
+    import math
+
+    if not math.isfinite(budget) or budget <= 0:
+        raise argparse.ArgumentTypeError("must be a finite number greater than 0")
+    return budget
+
+
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be an integer greater than 0")
+    return parsed
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="BinaryPilot Multi-Agent Cybersecurity Penetration Testing Tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Web application penetration test
+  binarypilot --target https://example.com
+
+  # GitHub repository analysis
+  binarypilot --target https://github.com/user/repo
+  binarypilot --target git@github.com:user/repo.git
+
+  # Local code analysis
+  binarypilot --target ./my-project
+
+  # Domain penetration test
+  binarypilot --target example.com
+
+  # IP address penetration test
+  binarypilot --target 192.168.1.42
+
+  # Multiple targets (e.g., white-box testing with source and deployed app)
+  binarypilot --target https://github.com/user/repo --target https://example.com
+  binarypilot --target ./my-project --target https://staging.example.com --target https://prod.example.com
+
+  # Targets from a file, one target per non-empty, non-comment line
+  binarypilot --target-list ./targets.txt
+
+  # Custom instructions (inline)
+  binarypilot --target example.com --instruction "Focus on authentication vulnerabilities"
+
+  # Custom instructions (from file)
+  binarypilot --target example.com --instruction-file ./instructions.txt
+  binarypilot --target https://app.com --instruction-file /path/to/detailed_instructions.md
+        """,
+    )
+
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"binarypilot {get_version()}",
+    )
+
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Update binarypilot to the latest version and exit. Self-updates the "
+        "standalone binary install; for pip/pipx/uv installs, prints the "
+        "matching upgrade command instead.",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--target",
+        type=str,
+        action="append",
+        help="Target to test (URL, repository, local directory path, domain name, or IP address). "
+        "Local directories are mounted into the sandbox writable. "
+        "Can be specified multiple times for multi-target scans. "
+        "Fresh runs require --target or --target-list.",
+    )
+    parser.add_argument(
+        "--target-list",
+        type=str,
+        action="append",
+        metavar="PATH",
+        help="Path to a file containing targets, one per non-empty, non-comment line. "
+        "Can be specified multiple times and combined with --target.",
+    )
+    parser.add_argument(
+        "--instruction",
+        type=str,
+        help="Custom instructions for the penetration test. This can be "
+        "specific vulnerability types to focus on (e.g., 'Focus on IDOR and XSS'), "
+        "testing approaches (e.g., 'Perform thorough authentication testing'), "
+        "test credentials (e.g., 'Use the following credentials to access the app: "
+        "admin:password123'), "
+        "or areas of interest (e.g., 'Check login API endpoint for security issues').",
+    )
+
+    parser.add_argument(
+        "--instruction-file",
+        type=str,
+        help="Path to a file containing detailed custom instructions for the penetration test. "
+        "Use this option when you have lengthy or complex instructions saved in a file "
+        "(e.g., '--instruction-file ./detailed_instructions.txt').",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--non-interactive",
+        action="store_true",
+        help=(
+            "Run in non-interactive mode (no TUI, exits on completion). "
+            "Default is interactive mode with TUI."
+        ),
+    )
+
+    parser.add_argument(
+        "-m",
+        "--scan-mode",
+        type=str,
+        choices=["quick", "standard", "deep"],
+        default="deep",
+        help=(
+            "Scan mode: "
+            "'quick' for fast CI/CD checks, "
+            "'standard' for routine testing, "
+            "'deep' for thorough security reviews (default). "
+            "Default: deep."
+        ),
+    )
+
+    parser.add_argument(
+        "--scope-mode",
+        type=str,
+        choices=["auto", "diff", "full"],
+        default="auto",
+        help=(
+            "Scope mode for code targets: "
+            "'auto' enables PR diff-scope in CI/headless runs, "
+            "'diff' forces changed-files scope, "
+            "'full' disables diff-scope."
+        ),
+    )
+
+    parser.add_argument(
+        "--diff-base",
+        type=str,
+        help=(
+            "Target branch or commit to compare against (e.g., origin/main). "
+            "Defaults to the repository's default branch."
+        ),
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to a custom config file (JSON) to use instead of ~/.binarypilot/cli-config.json",
+    )
+
+    parser.add_argument(
+        "--max-budget",
+        dest="max_budget_usd",
+        metavar="USD",
+        type=_positive_budget,
+        default=None,
+        help=(
+            "Maximum LLM cost in USD (> 0). The scan stops cleanly when this limit is reached. "
+            "Graduated wrap-up warnings are sent to all agents as it is approached."
+        ),
+    )
+
+    parser.add_argument(
+        "--max-turns",
+        dest="max_turns",
+        metavar="N",
+        type=_positive_int,
+        default=DEFAULT_MAX_TURNS,
+        help=(
+            "Maximum turns per agent (> 0, default %(default)s). Each agent is force-stopped "
+            "when it reaches this limit, with graduated wrap-up warnings as it is approached."
+        ),
+    )
+
+    parser.add_argument(
+        "--resume",
+        type=str,
+        metavar="RUN_NAME",
+        help=(
+            "Resume a prior scan by its run name (the dir under ./binarypilot_runs/). "
+            "Picks up the root + every non-terminal subagent's full LLM history "
+            "and agent topology. Skips fresh run-name generation."
+        ),
+    )
+
+    args = parser.parse_args()
+
+    if args.update:
+        sys.exit(0 if self_update() else 1)
+
+    if args.instruction and args.instruction_file:
+        parser.error(
+            "Cannot specify both --instruction and --instruction-file. Use one or the other."
+        )
+
+    if args.instruction_file:
+        instruction_path = Path(args.instruction_file)
+        try:
+            with instruction_path.open(encoding="utf-8") as f:
+                args.instruction = f.read().strip()
+                if not args.instruction:
+                    parser.error(f"Instruction file '{instruction_path}' is empty")
+        except Exception as e:
+            parser.error(f"Failed to read instruction file '{instruction_path}': {e}")
+
+    args.user_explicit_instruction = args.instruction if args.resume else None
+
+    if args.resume:
+        if args.target or args.target_list:
+            parser.error(
+                "Cannot combine --resume with --target/--target-list. "
+                "--resume picks up where the prior run left off, including the "
+                "original target list."
+            )
+        _load_resume_state(args, parser)
+        agents_path = runtime_state_dir(run_dir_for(args.resume)) / "agents.json"
+        if not agents_path.exists():
+            parser.error(
+                f"--resume {args.resume}: missing {agents_path}. The run was "
+                f"persisted but never reached its first agent snapshot — "
+                f"there's nothing to resume from. Pick a fresh --run-name "
+                f"or remove --resume to start over with the same targets."
+            )
+    else:
+        if not args.target and not args.target_list:
+            parser.error(
+                "the following arguments are required: -t/--target or --target-list "
+                "(or use --resume <run_name> to continue a prior scan)"
+            )
+        args.targets_info = []
+        targets = list(args.target or [])
+        for target_list_path in args.target_list or []:
+            try:
+                targets.extend(read_target_list_file(target_list_path))
+            except ValueError as e:
+                parser.error(str(e))
+
+        for target in targets:
+            try:
+                target_type, target_dict = infer_target_type(target)
+
+                if target_type == "local_code":
+                    display_target = target_dict.get("target_path", target)
+                else:
+                    display_target = target
+
+                args.targets_info.append(
+                    {"type": target_type, "details": target_dict, "original": display_target}
+                )
+            except ValueError as e:
+                parser.error(f"Invalid target '{target}': {e}")
+
+        args.targets_info = dedupe_local_targets(args.targets_info)
+
+        assign_workspace_subdirs(args.targets_info)
+        rewrite_localhost_targets(args.targets_info, HOST_GATEWAY_HOSTNAME)
+
+    return args
+
+
+def _persist_run_record(args: argparse.Namespace) -> None:
+    from binarypilot.report.writer import write_run_record
+
+    run_dir = run_dir_for(args.run_name)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    run_record = {
+        "run_id": args.run_name,
+        "run_name": args.run_name,
+        "status": "running",
+        "start_time": datetime.now(UTC).isoformat(),
+        "end_time": None,
+        "auth_mode": codex.auth_mode(load_settings().llm.model),
+        "targets_info": args.targets_info,
+        "scan_mode": args.scan_mode,
+        "instruction": args.instruction,
+        "non_interactive": args.non_interactive,
+        "local_sources": getattr(args, "local_sources", []),
+        "diff_scope": getattr(args, "diff_scope", {"active": False}),
+        "scope_mode": args.scope_mode,
+        "diff_base": args.diff_base,
+    }
+    write_run_record(run_dir, run_record)
+
+
+def _load_resume_state(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    """Populate ``args.targets_info`` and friends from a prior run's run.json."""
+    from binarypilot.report.writer import read_run_record
+
+    run_dir = run_dir_for(args.resume)
+    state_path = run_dir / "run.json"
+    if not state_path.exists():
+        parser.error(
+            f"--resume {args.resume}: no such run "
+            f"(missing {state_path}; remove --resume for a fresh start)"
+        )
+    try:
+        state = read_run_record(run_dir)
+    except RuntimeError as exc:
+        parser.error(f"--resume {args.resume}: run.json unreadable: {exc}")
+
+    args.targets_info = state.get("targets_info") or []
+    if not args.targets_info:
+        parser.error(f"--resume {args.resume}: run.json has no targets_info")
+
+    for target in args.targets_info:
+        if not isinstance(target, dict):
+            continue
+        details = target.get("details") or {}
+        if target.get("type") == "local_code" and details.get("target_path"):
+            try:
+                check_mountable_dir(Path(details["target_path"]).expanduser())
+            except ValueError as exc:
+                parser.error(f"--resume {args.resume}: {exc}")
+            continue
+        if target.get("type") != "repository":
+            continue
+        cloned = details.get("cloned_repo_path")
+        if not cloned:
+            continue
+        if not Path(cloned).expanduser().exists():
+            parser.error(
+                f"--resume {args.resume}: cloned repo at {cloned} is missing. "
+                f"It was deleted between runs. Pick a fresh --run-name to "
+                f"re-clone, or restore the directory before resuming."
+            )
+
+    if args.instruction is None:
+        args.instruction = state.get("instruction")
+    args.local_sources = collect_local_sources(args.targets_info)
+    if state.get("diff_scope"):
+        args.diff_scope = state.get("diff_scope")
+    persisted_scan_mode = state.get("scan_mode")
+    if persisted_scan_mode and args.scan_mode == "deep":
+        args.scan_mode = persisted_scan_mode
+
+
+def display_completion_message(args: argparse.Namespace, results_path: Path) -> None:
+    from binarypilot.report.state import get_global_report_state
+
+    console = Console()
+    report_state = get_global_report_state()
+
+    scan_completed = False
+    if report_state:
+        scan_completed = report_state.run_record.get("status") == "completed"
+
+    completion_text = Text()
+    if scan_completed:
+        completion_text.append("Penetration test completed", style="bold #22c55e")
+    else:
+        completion_text.append("SESSION ENDED", style="bold #eab308")
+
+    target_text = Text()
+    target_text.append("Target", style="dim")
+    target_text.append("  ")
+    if len(args.targets_info) == 1:
+        target_text.append(args.targets_info[0]["original"], style="bold white")
+    else:
+        target_text.append(f"{len(args.targets_info)} targets", style="bold white")
+        for target_info in args.targets_info:
+            target_text.append("\n        ")
+            target_text.append(target_info["original"], style="white")
+
+    stats_text = build_final_stats_text(report_state)
+
+    panel_parts: list[Text | str] = [completion_text, "\n\n", target_text]
+
+    if stats_text.plain:
+        panel_parts.extend(["\n", stats_text])
+
+    results_text = Text()
+    results_text.append("\n")
+    results_text.append("Output", style="dim")
+    results_text.append("  ")
+    results_text.append(str(results_path), style="#60a5fa")
+    panel_parts.extend(["\n", results_text])
+
+    view_text = Text()
+    view_text.append("\n")
+    view_text.append("View", style="dim")
+    view_text.append("    ")
+    view_text.append(f"binarypilot view {args.run_name}", style="#22c55e")
+    panel_parts.extend(["\n", view_text])
+
+    if not scan_completed:
+        resume_text = Text()
+        resume_text.append("\n")
+        resume_text.append("Resume", style="dim")
+        resume_text.append("  ")
+        resume_text.append(f"binarypilot --resume {args.run_name}", style="#22c55e")
+        panel_parts.extend(["\n", resume_text])
+
+    panel_content = Text.assemble(*panel_parts)
+
+    border_style = "#22c55e" if scan_completed else "#eab308"
+
+    panel = Panel(
+        panel_content,
+        title="[bold white]BINARYPILOT",
+        title_align="left",
+        border_style=border_style,
+        padding=(1, 2),
+    )
+
+    console.print("\n")
+    console.print(panel)
+    console.print()
+    console.print(
+        "[#60a5fa]binarypilot.ai[/]  [dim]·[/]  "
+        "[#60a5fa]docs.binarypilot.ai[/]  [dim]·[/]  "
+        "[#60a5fa]discord.gg/binarypilot-ai[/]"
+    )
+    console.print()
+    if not args.non_interactive:
+        notify_update(console)
+
+
+def pull_docker_image() -> None:
+    from docker.errors import DockerException
+
+    console = Console()
+    client = check_docker_connection()
+
+    image = load_settings().runtime.image
+
+    if image_exists(client, image):
+        logger.debug("Docker image already present locally: %s", image)
+        return
+
+    logger.info("Pulling docker image: %s", image)
+    console.print()
+    console.print(f"[dim]Pulling image[/] {image}")
+    console.print("[dim yellow]This only happens on first run and may take a few minutes...[/]")
+    console.print()
+
+    with console.status("[bold cyan]Downloading image layers...", spinner="dots") as status:
+        try:
+            layers_info: dict[str, str] = {}
+            last_update = ""
+
+            for line in client.api.pull(image, stream=True, decode=True):
+                last_update = process_pull_line(line, layers_info, status, last_update)
+
+        except DockerException as e:
+            logger.debug("Failed to pull docker image %s", image, exc_info=True)
+            console.print()
+            error_text = Text()
+            error_text.append("FAILED TO PULL IMAGE", style="bold red")
+            error_text.append("\n\n", style="white")
+            error_text.append(f"Could not download: {image}\n", style="white")
+            error_text.append(str(e), style="dim red")
+
+            panel = Panel(
+                error_text,
+                title="[bold white]BINARYPILOT",
+                title_align="left",
+                border_style="red",
+                padding=(1, 2),
+            )
+            console.print(panel, "\n")
+            sys.exit(1)
+
+    logger.info("Docker image %s ready", image)
+    success_text = Text()
+    success_text.append("Docker image ready", style="#22c55e")
+    console.print(success_text)
+    console.print()
+
+
+def main() -> None:
+    configure_dependency_logging()
+
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # `binarypilot view [<run>]` is a viewer-only subcommand, dispatched before the
+    # scan argument parser (which requires a target) and before any scan setup.
+    if len(sys.argv) > 1 and sys.argv[1] == "view":
+        from binarypilot.interface.viewer.cli import run_view
+
+        run_view(sys.argv[2:])
+        return
+
+    # `binarypilot auth …` manages model-subscription sign-in and exits; it needs no
+    # target, Docker, or scan setup.
+    if len(sys.argv) > 1 and sys.argv[1] == "auth":
+        from binarypilot.interface.auth_cli import run_auth
+
+        sys.exit(run_auth(sys.argv[2:]))
+
+    args = parse_arguments()
+
+    if args.config:
+        apply_config_override(validate_config_file(args.config))
+
+    start_background_check()
+    if not args.non_interactive and prompt_update_if_available(Console()):
+        if is_binary_install() and sys.platform != "win32":
+            os.execv(sys.executable, sys.argv)  # noqa: S606  # nosec B606
+        sys.exit(0)
+
+    check_docker_installed()
+    pull_docker_image()
+
+    validate_environment()
+    asyncio.run(warm_up_llm(show_model_warning=args.non_interactive))
+
+    persist_current()
+
+    args.run_name = args.resume or generate_run_name(args.targets_info)
+
+    if not args.resume:
+        for target_info in args.targets_info:
+            if target_info["type"] == "repository":
+                repo_url = target_info["details"]["target_repo"]
+                dest_name = target_info["details"].get("workspace_subdir")
+                cloned_path = clone_repository(repo_url, args.run_name, dest_name)
+                target_info["details"]["cloned_repo_path"] = cloned_path
+
+        args.local_sources = collect_local_sources(args.targets_info)
+        try:
+            diff_scope = resolve_diff_scope_context(
+                local_sources=args.local_sources,
+                scope_mode=args.scope_mode,
+                diff_base=args.diff_base,
+                non_interactive=args.non_interactive,
+            )
+        except ValueError as e:
+            console = Console()
+            error_text = Text()
+            error_text.append("DIFF SCOPE RESOLUTION FAILED", style="bold red")
+            error_text.append("\n\n", style="white")
+            error_text.append(str(e), style="white")
+
+            panel = Panel(
+                error_text,
+                title="[bold white]BINARYPILOT",
+                title_align="left",
+                border_style="red",
+                padding=(1, 2),
+            )
+            console.print("\n")
+            console.print(panel)
+            console.print()
+            sys.exit(1)
+
+        args.diff_scope = diff_scope.metadata
+        if diff_scope.instruction_block:
+            if args.instruction:
+                args.instruction = f"{diff_scope.instruction_block}\n\n{args.instruction}"
+            else:
+                args.instruction = diff_scope.instruction_block
+
+        _persist_run_record(args)
+
+    _telemetry_start_kwargs = {
+        "model": load_settings().llm.model,
+        "auth_mode": codex.auth_mode(load_settings().llm.model),
+        "scan_mode": args.scan_mode,
+        "is_whitebox": is_whitebox_scan(args.targets_info),
+        "interactive": not args.non_interactive,
+        "has_instructions": bool(args.instruction),
+    }
+    posthog.start(**_telemetry_start_kwargs)
+    scarf.start(**_telemetry_start_kwargs)
+
+    from binarypilot.report.state import get_global_report_state
+
+    exit_reason = "user_exit"
+    try:
+        if args.non_interactive:
+            from binarypilot.interface.cli import run_cli
+
+            asyncio.run(run_cli(args))
+        else:
+            from binarypilot.interface.tui import run_tui
+
+            asyncio.run(run_tui(args))
+    except KeyboardInterrupt:
+        exit_reason = "interrupted"
+    except Exception:
+        exit_reason = "error"
+        posthog.error("unhandled_exception")
+        scarf.error("unhandled_exception")
+        raise
+    finally:
+        report_state = get_global_report_state()
+        if report_state:
+            status = {"interrupted": "interrupted", "error": "failed"}.get(
+                exit_reason,
+                "stopped",
+            )
+            report_state.cleanup(status=status)
+            posthog.end(report_state, exit_reason=exit_reason)
+            scarf.end(report_state, exit_reason=exit_reason)
+
+    results_path = run_dir_for(args.run_name)
+
+    display_completion_message(args, results_path)
+
+    if args.non_interactive:
+        report_state = get_global_report_state()
+        if report_state and report_state.vulnerability_reports:
+            sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
