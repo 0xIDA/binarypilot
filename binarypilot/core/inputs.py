@@ -33,6 +33,29 @@ def _accepts_required_tool_choice(model_name: str | None) -> bool:
     return name.startswith("openai/") or is_known_openai_bare_model(name)
 
 
+def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
+    platform = details.get("platform", "?")
+    kind = details.get("kind", "challenge")
+    name = details.get("name")
+    ident = (
+        details.get("challenge_id")
+        or details.get("machine_id")
+        or details.get("sherlock_id")
+        or details.get("specifier", "")
+    )
+    lab_id = details.get("lab_id")
+    prefix = f"{platform} {kind}"
+    if name:
+        prefix += f" '{name}'"
+    suffix = (
+        " Start the instance via the platform tools, download files, solve, "
+        "submit the accepted flag, and record via report_solve."
+    )
+    if lab_id is not None:
+        return f"{prefix} — lab {lab_id}, challenge {ident}.{suffix}"
+    return f"{prefix} — id {ident}.{suffix}"
+
+
 def build_root_task(scan_config: dict[str, Any]) -> str:
     targets = scan_config.get("targets", []) or []
     diff_scope = scan_config.get("diff_scope") or {}
@@ -43,6 +66,7 @@ def build_root_task(scan_config: dict[str, Any]) -> str:
         "Local Codebases": [],
         "URLs": [],
         "IP Addresses": [],
+        "CTF Challenges": [],
     }
 
     for target in targets:
@@ -68,6 +92,9 @@ def build_root_task(scan_config: dict[str, Any]) -> str:
             sections["URLs"].append(f"- {details.get('target_url', '')}")
         elif ttype == "ip_address":
             sections["IP Addresses"].append(f"- {details.get('target_ip', '')}")
+        elif ttype == "ctf_challenge":
+            line = _format_ctf_challenge_line(details)
+            sections["CTF Challenges"].append(f"- {line}")
 
     parts: list[str] = []
     for label, items in sections.items():
@@ -104,6 +131,7 @@ def build_scope_context(scan_config: dict[str, Any]) -> dict[str, Any]:
         "local_code": "target_path",
         "web_application": "target_url",
         "ip_address": "target_ip",
+        "ctf_challenge": "specifier",
     }
     for target in scan_config.get("targets", []) or []:
         ttype = target.get("type", "unknown")

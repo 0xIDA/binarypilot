@@ -685,6 +685,26 @@ Examples:
         ),
     )
 
+    parser.add_argument(
+        "--platform",
+        type=str,
+        choices=["flagyard", "htb"],
+        default=None,
+        metavar="{flagyard,htb}",
+        help="CTF platform for --challenge resolution. Required when --challenge is a name; "
+        "inferred from the URL when --challenge is a URL.",
+    )
+    parser.add_argument(
+        "--challenge",
+        type=str,
+        default=None,
+        metavar="NAME_OR_URL",
+        help="CTF challenge: name (e.g. 'Lame', 'Web 01') or URL (e.g. "
+        "'https://app.hackthebox.com/challenges/15', "
+        "'https://ctf.flagyard.com/labs/12/challenges/34'). "
+        "Requires --platform when a name is given. Cannot combine with --target/--target-list.",
+    )
+
     args = parser.parse_args()
 
     if args.update:
@@ -723,13 +743,26 @@ Examples:
                 f"there's nothing to resume from. Pick a fresh --run-name "
                 f"or remove --resume to start over with the same targets."
             )
+    if args.challenge and (args.target or args.target_list):
+        parser.error("Cannot combine --challenge with --target/--target-list.")
+    if args.challenge and args.resume:
+        parser.error("Cannot combine --challenge with --resume.")
+
     else:
-        if not args.target and not args.target_list:
+        if not args.target and not args.target_list and not args.challenge:
             parser.error(
                 "the following arguments are required: -t/--target or --target-list "
-                "(or use --resume <run_name> to continue a prior scan)"
+                "(or use --challenge <name-or-url> with --platform, "
+                "or --resume <run_name> to continue a prior scan)"
             )
         args.targets_info = []
+        if args.challenge:
+            try:
+                from binarypilot.core.resolver import resolve_challenge
+
+                args.targets_info.append(resolve_challenge(args.challenge, args.platform))
+            except Exception as e:
+                parser.error(str(e))
         targets = list(args.target or [])
         for target_list_path in args.target_list or []:
             try:
