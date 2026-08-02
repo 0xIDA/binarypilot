@@ -38,6 +38,10 @@ Start from the clue exactly as given. The "target" is what's written in the chal
 **Phone / person**
 - Carrier lookup, public records where lawful, social graph lookup by name and location.
 
+## Deep dives (load on demand)
+
+`osint-geolocation` (reverse image/geo), `osint-social` (Twitter/X, Tumblr...), `osint-web` (dorking/DNS/whois/wayback).
+
 ## Discipline
 
 - Document sources in the writeup: URL + what it returned.

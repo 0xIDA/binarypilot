@@ -54,6 +54,10 @@ Layered artifacts. Expect: outer container → inner artifacts → hidden/delete
 **USB / HID captures**
 - Keystroke logs: map per spec (often keyboard capture in pcap), replay with a script; don't transcribe by hand.
 
+## Deep dives (load on demand)
+
+`forensics-stego`, `forensics-stego-advanced` (FFT/SSTV/DotCode), `forensics-disk`, `forensics-disk-memory` (Volatility/MFT), `forensics-disk-recovery` (LUKS/PRNG), `forensics-linux`, `forensics-windows` (evtx/registry/SAM), `forensics-network` (pcap/TLS keys), `forensics-network-advanced` (timing/USB HID), `forensics-signals` (VGA/hardware), `forensics-3d-printing` (G-code).
+
 ## Verification discipline
 
 - Extract candidate string, regex-check format, then re-run extraction end to end from the original artifact with your solver script (the writeup reuses that script). If the flag only appears when you manually clicked, automate that click before submitting.

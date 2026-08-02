@@ -45,6 +45,10 @@ Recon first, but stay bounded. Understand the app (working model: what stores st
 - Proxy: Caido via `caido_api` from sandbox Python for captured requests and replays.
 - Wordlists: /usr/share/wordlists/ (download rockyou/seclists when needed into /home/pentester/tools/wordlists).
 
+## Deep dives (load on demand)
+
+`web-auth-access`, `web-auth-infra` (OAuth/OIDC), `web-client-side` (XSS/DOMPurify/DOM), `web-server-side` (PHP juggle/LFI/SQLi), `web-server-side-advanced`, `web-server-deser` (Java ysoserial), `web-server-exec` (PHP webshell/eval bypass), `web-node-prototype` (prototype pollution/VM escape), `web-web3`, `wasm`.
+
 ## Discipline
 
 - Save payloads and responses to /workspace/solve; logs are the writeup.

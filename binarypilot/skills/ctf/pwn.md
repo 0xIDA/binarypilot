@@ -45,6 +45,10 @@ Read the mitigations first. `checksec --file=<binary>` and `file <binary>` befor
 - Stabilize against ASLR: brute-force low-entropy bytes in a loop with `while True: try: ... p.close()`.
 - Verify the flag is extracted by the *script itself* (print it), not just visually.
 
+## Deep dives (load on demand)
+
+`pwn-basics`, `pwn-format-string`, `pwn-rop`, `pwn-rop-advanced` (SROP/pivots), `pwn-heap`, `heap-advanced` (modern glibc), `pwn-sandbox` (jail/VM escapes), `pwn-kernel`, `pwn-kernel-bypass`, `pwn-kernel-techniques`, `pwn-advanced-exploits`, `pwn-advanced-exploits-2`.
+
 ## Flag capture
 
 Read flag from the remote: `p.sendline(b'cat flag*')` (or the challenge-specific path), `p.recvregex(rb'(FlagY\{[^}]*\}|HTB\{[^}]*\})')`. Verify the match against the platform format; submit via the platform tool, not curl.

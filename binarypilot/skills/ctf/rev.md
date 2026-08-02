@@ -46,6 +46,10 @@ Understand the flag-check logic, then extract what it accepts. Static first, dyn
 
 - Model the check in z3, or manually invert arithmetic; confirm the produced key validates under the actual binary (run it; do not claim from theory).
 
+## Deep dives (load on demand)
+
+`reverse-anti-analysis` (ptrace/timing/SIGILL bypass), `reverse-dynamic` (frida/angr/qiling), `reverse-languages` (py-bytecode, .NET, Ruby, Perl...), `reverse-patterns`, `reverse-patterns-ctf`, `reverse-patterns-ctf-2`, `reverse-platforms` (Mach-O/iOS/IoT), `android` (APK/jadx/apktool/smali). Tooling is CLI-only here: r2/radare2, gdb+pwndbg/gef, angr, frida — no Ghidra/IDA (GUI).
+
 ## Flag discipline
 
 Extract the exact string the binary expects: often printed on correct input, sometimes embedded xor'ed in rodata, sometimes built at runtime. Regex-check against the platform format before submission.

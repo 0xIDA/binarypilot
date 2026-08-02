@@ -39,6 +39,10 @@ The category of last resort. Approach: identify what the challenge actually IS b
 - Compression bombs / polyglots: file that's two types at once (PNG+ZIP) — split via binwalk; a .tar inside the IDAT of a PNG.
 - Radio/SDR-dumped IQ files: `Universal Radio Hacker` style decoding; in sandbox: soak up the signal via Python.
 
+## Deep dives (load on demand)
+
+`misc-bashjails`, `misc-pyjails`, `misc-dns`, `misc-encodings`, `misc-games-vms`, `misc-games-vms-2` (ML model/LoRA, Flask hooks), `misc-rf-sdr`. Malware-adjacent work: `malware-analysis`, `malware-pe-dotnet`, `malware-scripts`, `malware-c2-protocols`.
+
 ## Discipline
 
 Save solver scripts; verify extracted flags via regex before submitting; writeup the chain (what the challenge actually was → how identified → how solved) — the identification step IS the writeup.

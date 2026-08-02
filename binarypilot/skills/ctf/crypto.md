@@ -52,6 +52,10 @@ Identify the primitive first (from challenge text, attachments, or behavioral pr
 - Look for: homegrown padding, meaningless operations that cancel, secret reused as both key and IV, salts that don't matter.
 - Model it in Python/SMT (z3) when it's invertible or constraint-satisfiable: encode operations symbolically, query for a preimage.
 
+## Deep dives (load on demand)
+
+`load_skill(skills=["crypto-rsa"])`, `crypto-classic`, `crypto-modern`, `crypto-prng`, `crypto-advanced-math` (LLL/Coppersmith/Pohlig-Hellman), `crypto-ecc`, `crypto-exotic` (braid/group schemes), `crypto-zkp`, `crypto-historical` (Lorenz/Enigma-era).
+
 ## Discipline
 
 - Work in `/workspace/challenge-files` / `/workspace/solve`. Save your scripts — they're the writeup.
