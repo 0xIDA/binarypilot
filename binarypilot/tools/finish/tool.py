@@ -289,3 +289,94 @@ async def finish_scan(
     ):
         await coordinator.set_status(me, "completed")
     return json.dumps(result, ensure_ascii=False, default=str)
+
+
+@function_tool(timeout=60)
+async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup needs
+    ctx: RunContextWrapper,
+    title: str,
+    challenge: str,
+    platform: str,
+    flag: str,
+    writeup: str,
+    poc: str | None = None,
+    poc_language: str | None = None,
+    references: str | None = None,
+    submission_time: str | None = None,
+) -> str:
+    """Record a confirmed CTF solve — the platform has accepted the flag.
+
+    Call AFTER the platform submit tool (`flagyard_submit_flag` /
+    `htb_submit_challenge_flag` / `htb_submit_machine_flag`) returned accepted.
+    This persists the solve to the run's report directory (writeups/<id>.md +
+    solves.json) so it survives run-resume and lands in the final artifact set.
+
+    Args:
+        title: Short solve title (e.g. "FlagYard Beginner Web 01 — IDOR").
+        challenge: Challenge identifier as shown by the platform (name or id).
+        platform: 'flagyard' or 'htb' (lowercase preferred; normalized).
+        flag: The exact flag string that was accepted, e.g. "FlagY{...}" or "HTB{...}".
+        writeup: Markdown solve writeup — Target / Summary / Recon & Analysis /
+            Solve steps (with commands) / Flag / Mitigation note.
+        poc: Optional PoC or solver script (fenced-code friendly).
+        poc_language: Language tag for `poc` (python/bash/...); defaults to none.
+        references: Optional newline-separated reference URLs.
+        submission_time: Timestamp of the accepted submission, if known.
+    """
+    if not flag.strip() or not writeup.strip():
+        return json.dumps({"success": False, "error": "flag and writeup are required"})
+    normalized = platform.strip().lower()
+    if normalized not in {"flagyard", "htb"}:
+        return json.dumps(
+            {
+                "success": False,
+                "error": f"platform must be 'flagyard' or 'htb' (got {platform!r})",
+            }
+        )
+
+    from binarypilot.report.state import get_global_report_state
+
+    state = get_global_report_state()
+    if state is None:
+        return json.dumps({"success": False, "error": "Report state unavailable"})
+    inner = ctx.context if isinstance(ctx.context, dict) else {}
+    solve_id = state.add_solve(
+        title=title,
+        challenge=challenge,
+        platform=normalized,
+        flag=flag,
+        writeup=writeup,
+        poc=poc,
+        poc_language=poc_language,
+        references=references,
+        submission_time=submission_time,
+        agent_id=inner.get("agent_id"),
+        agent_name=inner.get("agent_name"),
+    )
+    return json.dumps({"success": True, "solve_id": solve_id})
+
+
+@function_tool(timeout=60)
+async def finish_solve(
+    ctx: RunContextWrapper,
+    executive_summary: str,
+    methodology: str,
+    technical_analysis: str,
+    recommendations: str,
+) -> str:
+    """Close out the solve — root agent only.
+
+    Equivalent to ``finish_scan``. Pre-flight: every accepted flag should
+    already be recorded via ``report_solve``; if any platform submission
+    succeeded without a matching ``report_solve`` call, the solve is invisible
+    in the final artifact set. Call ``finish_solve`` exactly ONCE, only when
+    the primary target is confirmed solved (or honestly recorded as unsolved
+    in the narrative fields).
+    """
+    return await finish_scan(
+        ctx,
+        executive_summary=executive_summary,
+        methodology=methodology,
+        technical_analysis=technical_analysis,
+        recommendations=recommendations,
+    )

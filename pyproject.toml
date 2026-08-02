@@ -259,7 +259,7 @@ ignore = [
 "binarypilot/core/runner.py" = ["TC003", "PLR0912", "PLR0915", "PLC0415"]
 # ReportState carries scan artifact/report fields and
 # a runtime ``Callable`` annotation on ``vulnerability_found_callback``.
-"binarypilot/report/state.py" = ["TC003", "PLR0912", "PLR0915", "E501", "PERF401", "PLC0415"]
+"binarypilot/report/state.py" = ["TC003", "PLR0912", "PLR0915", "PLR0917", "E501", "PERF401", "PLC0415"]
 "binarypilot/report/usage.py" = ["PLC0415"]
 # Lazy import of binarypilot.config.models avoids a circular dependency between the
 # report pipeline and the config layer.

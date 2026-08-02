@@ -113,13 +113,70 @@ def write_run_record(run_dir: Path, run_record: dict[str, Any]) -> None:
     )
 
 
+def _slug(text: str, max_len: int = 60) -> str:
+    s = re.sub(r"[^A-Za-z0-9下-鿿_-]+", "-", text).strip("-").lower()
+    return s[:max_len] or "solve"
+
+
+def render_solve_md(solve: dict[str, Any]) -> str:
+    lines = [
+        f"# {solve['title']}",
+        "",
+        f"**Platform:** {solve.get('platform', '?')}  ",
+        f"**Challenge:** {solve.get('challenge', '?')}  ",
+        f"**Flag:** `{solve.get('flag', '?')}`  ",
+        f"**Submitted:** {solve.get('submission_time', solve['timestamp'])}  ",
+        f"**Agent:** {solve.get('agent_name') or solve.get('agent_id') or 'unknown'}  ",
+        "",
+        "## Solve",
+        "",
+        solve.get("writeup", "_No writeup recorded._"),
+        "",
+    ]
+    if solve.get("poc"):
+        fence = safe_fence(solve["poc"])
+        lines += [
+            "## Proof of concept",
+            "",
+            f"{fence}{solve.get('poc_language') or ''}",
+            solve["poc"],
+            fence,
+            "",
+        ]
+    if solve.get("references"):
+        lines += ["## References", ""]
+        lines += [f"- {ref.strip()}" for ref in solve["references"].splitlines() if ref.strip()]
+        lines.append("")
+    return "\n".join(lines)
+
+
+def write_solves(
+    run_dir: Path,
+    solves: list[dict[str, Any]],
+    saved_solve_ids: set[str],
+) -> int:
+    solve_dir = run_dir / "writeups"
+    solve_dir.mkdir(exist_ok=True)
+
+    for solve in (s for s in solves if s["id"] not in saved_solve_ids):
+        name = f"{solve['id']}-{_slug(solve.get('challenge', solve['title']))}.md"
+        _atomic_write_text(solve_dir / name, render_solve_md(solve))
+        saved_solve_ids.add(solve["id"])
+
+    _atomic_write_text(
+        run_dir / "solves.json",
+        json.dumps(solves, ensure_ascii=False, indent=2, default=str),
+    )
+    return len(solves)
+
+
 def write_executive_report(run_dir: Path, final_scan_result: str) -> None:
-    path = run_dir / "penetration_test_report.md"
+    path = run_dir / "solve_report.md"
     with path.open("w", encoding="utf-8") as f:
-        f.write("# Security Penetration Test Report\n\n")
+        f.write("# BinaryPilot CTF Solve Report\n\n")
         f.write(f"**Generated:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n")
         f.write(f"{final_scan_result}\n")
-    logger.info("Saved final penetration test report to: %s", path)
+    logger.info("Saved final CTF solve report to: %s", path)
 
 
 def write_vulnerabilities(

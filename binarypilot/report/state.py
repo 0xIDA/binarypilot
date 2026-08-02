@@ -20,6 +20,7 @@ from binarypilot.report.writer import (
     read_run_record,
     write_executive_report,
     write_run_record,
+    write_solves,
     write_vulnerabilities,
 )
 from binarypilot.telemetry import posthog, scarf
@@ -117,6 +118,7 @@ class ReportState:
         self.end_time: str | None = None
 
         self.vulnerability_reports: list[dict[str, Any]] = []
+        self.solves: list[dict[str, Any]] = []
         self.final_scan_result: str | None = None
 
         self.scan_results: dict[str, Any] | None = None
@@ -136,6 +138,7 @@ class ReportState:
         }
         self._run_dir: Path | None = None
         self._saved_vuln_ids: set[str] = set()
+        self._saved_solve_ids: set[str] = set()
 
         self.caido_url: str | None = None
         self.vulnerability_found_callback: Callable[[dict[str, Any]], None] | None = None
@@ -163,6 +166,8 @@ class ReportState:
         - ``vulnerability_reports`` from ``vulnerabilities.json`` so
           :meth:`add_vulnerability_report` doesn't allocate a colliding
           ``vuln-0001`` and overwrite the prior on-disk MD.
+        - ``solves`` from ``solves.json`` so :meth:`add_solve` resumes
+          numbering and doesn't rewrite the same writeup.
         - ``run_record`` from ``run.json`` so timestamps, run inputs,
           status, and final report state have one public source of truth.
 
@@ -212,6 +217,25 @@ class ReportState:
                 "report state hydrated %d vulnerability report(s)",
                 len(self.vulnerability_reports),
             )
+
+        solves_path = run_dir / "solves.json"
+        if solves_path.exists():
+            try:
+                solves = json.loads(solves_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise RuntimeError(
+                    f"solves.json at {solves_path} is corrupt ({exc}); "
+                    f"refusing to start fresh — that would overwrite prior writeups. "
+                    f"Inspect or delete the run dir.",
+                ) from exc
+            if not isinstance(solves, list):
+                raise RuntimeError(f"solves.json at {solves_path} is not a list")
+            self.solves = [s for s in solves if isinstance(s, dict)]
+            for s in self.solves:
+                sid = s.get("id")
+                if isinstance(sid, str):
+                    self._saved_solve_ids.add(sid)
+            logger.info("report state hydrated %d solve(s)", len(self.solves))
 
     def add_vulnerability_report(
         self,
@@ -303,6 +327,53 @@ class ReportState:
 
         self.save_run_data()
         return report_id
+
+    def add_solve(
+        self,
+        title: str,
+        challenge: str,
+        platform: str,
+        flag: str,
+        writeup: str,
+        poc: str | None = None,
+        poc_language: str | None = None,
+        references: str | None = None,
+        submission_time: str | None = None,
+        agent_id: str | None = None,
+        agent_name: str | None = None,
+    ) -> str:
+        """Record a confirmed CTF solve (flag already accepted by the platform).
+
+        Callers are expected to invoke this only AFTER the platform submit tool
+        returned a success — the flag recorded here is the accepted one, not a
+        candidate.
+        """
+        solve_id = f"solve-{len(self.solves) + 1:04d}"
+        solve: dict[str, Any] = {
+            "id": solve_id,
+            "title": title.strip(),
+            "challenge": challenge.strip(),
+            "platform": platform.strip().lower(),
+            "flag": flag.strip(),
+            "writeup": writeup.strip(),
+            "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+        if poc:
+            solve["poc"] = poc.strip()
+        if poc_language:
+            solve["poc_language"] = poc_language.strip()
+        if references:
+            solve["references"] = references.strip()
+        if submission_time:
+            solve["submission_time"] = submission_time.strip()
+        if agent_id:
+            solve["agent_id"] = agent_id
+        if agent_name:
+            solve["agent_name"] = agent_name
+        self.solves.append(solve)
+        logger.info("Recorded solve: %s - %s (%s)", solve_id, challenge, platform)
+        self.save_run_data()
+        return solve_id
 
     def get_existing_vulnerabilities(self) -> list[dict[str, Any]]:
         return list(self.vulnerability_reports)
@@ -428,6 +499,9 @@ class ReportState:
 
             if self.vulnerability_reports:
                 write_vulnerabilities(run_dir, self.vulnerability_reports, self._saved_vuln_ids)
+
+            if self.solves:
+                write_solves(run_dir, self.solves, self._saved_solve_ids)
 
             # SARIF 2.1.0 emitter for CI / ASPM integration. Always emit (even
             # empty) so a clean run overwrites a prior findings.sarif rather than

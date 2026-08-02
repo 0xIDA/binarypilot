@@ -25,7 +25,7 @@ from binarypilot.tools.agents_graph.tools import (
     view_agent_graph,
     wait_for_agents,
 )
-from binarypilot.tools.finish.tool import finish_scan
+from binarypilot.tools.finish.tool import finish_scan, finish_solve, report_solve
 from binarypilot.tools.load_skill.tool import load_skill
 from binarypilot.tools.notes.tools import (
     create_note,
@@ -432,7 +432,7 @@ _PARKING_TOOLS: frozenset[str] = frozenset({"respond_to_user", "wait_for_agents"
 def _lifecycle_tool_completed(tool_name: str, output: Any) -> bool:
     if tool_name == "agent_finish":
         completion_key = "agent_completed"
-    elif tool_name == "finish_scan":
+    elif tool_name in {"finish_scan", "finish_solve"}:
         completion_key = "scan_completed"
     else:
         return False
@@ -643,9 +643,10 @@ def build_binarypilot_agent(
         # Yielding to the user is only meaningful when one is attached.
         agent_tools.append(respond_to_user)
     if is_root:
-        tools: list[Tool] = [*_BASE_TOOLS, *agent_tools, finish_scan]
+        # finish_scan stays last (lifecycle); report_solve/finish_solve precede it.
+        tools: list[Tool] = [*_BASE_TOOLS, *agent_tools, report_solve, finish_solve, finish_scan]
     else:
-        tools = [*_BASE_TOOLS, *agent_tools, agent_finish]
+        tools = [*_BASE_TOOLS, *agent_tools, report_solve, agent_finish]
     _ensure_unique_tool_names(tools)
     tools = [
         _with_bounded_result(_with_coerced_arguments(tool))

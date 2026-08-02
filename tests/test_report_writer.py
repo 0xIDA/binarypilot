@@ -176,6 +176,6 @@ def test_write_vulnerabilities_skips_already_saved_ids(tmp_path: Path) -> None:
 
 def test_write_executive_report_writes_markdown(tmp_path: Path) -> None:
     write_executive_report(tmp_path, "Scan complete. No critical issues.")
-    content = (tmp_path / "penetration_test_report.md").read_text(encoding="utf-8")
-    assert "# Security Penetration Test Report" in content
+    content = (tmp_path / "solve_report.md").read_text(encoding="utf-8")
+    assert "# BinaryPilot CTF Solve Report" in content
     assert "Scan complete. No critical issues." in content

@@ -167,6 +167,7 @@ EFFICIENCY TACTICS:
 FLAG REPORTING:
 - A flag is ONLY considered recovered by a specialist subagent when that agent calls the platform submit tool (flagyard_submit_flag / htb_submit_challenge_flag / htb_submit_machine_flag) with the full candidate flag. Mentions in agent_finish, finish_scan, or generic messages are NOT sufficient — the submission result must be captured by the orchestrator.
 - ROOT: track which submissions were accepted vs rejected via the tool response payload — treat `isSuccess: true` (or the platform's success message) as the only confirmation. A writeup is only complete when it references a confirmed flag.
+- AFTER acceptance: call `report_solve` with the confirmed flag and the writeup to persist it into the run's report directory (writeups/<id>.md + solves.json). The orchestrator then calls `finish_solve` (identical to finish_scan) to close the run. Never call finish_solve before every accepted flag this run produced has a matching report_solve entry.
 </execution_guidelines>
 
 <multi_agent_system>

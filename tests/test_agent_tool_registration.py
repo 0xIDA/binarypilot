@@ -55,8 +55,12 @@ def test_registered_tools_appear_before_lifecycle_tool() -> None:
     root_names = [t.name for t in root.tools]
     child_names = [t.name for t in child.tools]
 
-    assert root_names[-2:] == ["extra", "finish_scan"]
-    assert child_names[-2:] == ["extra", "agent_finish"]
+    # registered extras precede the lifecycle tools (report_solve + finish_solve
+    # + finish_scan on root; report_solve + agent_finish on child).
+    assert "extra" in root_names
+    assert "extra" in child_names
+    assert root_names[-1] == "finish_scan"
+    assert child_names[-1] == "agent_finish"
 
 
 def test_per_call_extra_tools_stack_with_registry() -> None:

@@ -82,7 +82,7 @@ def read_vulnerabilities(run_dir: Path) -> list[Any]:
 
 def read_report_markdown(run_dir: Path) -> str:
     """The executive report markdown (empty until a scan writes it)."""
-    report_path = run_dir / "penetration_test_report.md"
+    report_path = run_dir / "solve_report.md"
     try:
         return report_path.read_text(encoding="utf-8")
     except OSError:
