@@ -23,7 +23,7 @@ RUN mkdir -p /out/bin && \
 # ---------------------------------------------------------------------------
 FROM kalilinux/kali-rolling:latest
 
-LABEL description="AI Agent Penetration Testing Environment with Comprehensive Automated Tools"
+LABEL description="BinaryPilot CTF Solver Sandbox — Kali + CTF toolchain (web/pwn/rev/crypto/forensics)"
 
 RUN apt-get update && \
     apt-get install -y kali-archive-keyring sudo && \
@@ -56,7 +56,30 @@ RUN apt-get update && \
     libcap2-bin \
     gdb \
     libnss3-tools \
-    chromium fonts-liberation
+    chromium fonts-liberation \
+    # --- CTF: reverse / pwn ---
+    radare2 \
+    gdb-multiarch \
+    qemu-user qemu-user-static \
+    binwalk \
+    upx-ucl \
+    # --- CTF: forensics ---
+    foremost \
+    steghide \
+    exiftool \
+    pngcheck \
+    tshark \
+    p7zip-full unrar-free \
+    # --- CTF: crypto / hashing ---
+    john \
+    hashcat \
+    hashid \
+    # --- CTF: misc ---
+    socat \
+    ruby-full
+
+# Ruby gems needed by CTF playbooks (zsteg for image stego).
+RUN gem install --no-document zsteg
 
 
 RUN setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip $(which nmap)
@@ -228,11 +251,19 @@ RUN python3 -m venv /app/.venv && \
     /app/.venv/bin/pip install --no-cache-dir \
         requests httpx beautifulsoup4 lxml pyjwt cryptography && \
     /app/.venv/bin/pip install --no-cache-dir -r /home/pentester/tools/jwt_tool/requirements.txt && \
+    # --- CTF: pwn + crypto python libs ---
+    /app/.venv/bin/pip install --no-cache-dir \
+        pwntools ropper ROPgadget checksec.py pycryptodome sympy z3-solver r2pipe && \
     printf '%s\n' \
         '#!/bin/bash' \
         'exec /app/.venv/bin/python /home/pentester/tools/jwt_tool/jwt_tool.py "$@"' \
         > /home/pentester/.local/bin/jwt_tool && \
     chmod +x /home/pentester/.local/bin/jwt_tool
+
+# one_gadget (ruby gem; only here because a lot of CTF pwn playbooks cite it).
+USER root
+RUN gem install --no-document one_gadget
+USER pentester
 
 COPY --chown=pentester:pentester binarypilot/tools/proxy/caido_api.py /opt/binarypilot-python/caido_api.py
 ENV PYTHONPATH=/opt/binarypilot-python

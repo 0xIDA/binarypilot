@@ -4,7 +4,7 @@ set -euo pipefail
 
 APP=binarypilot
 REPO="usebinarypilot/binarypilot"
-BINARYPILOT_IMAGE="ghcr.io/usebinarypilot/binarypilot-sandbox:1.2.0"
+BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.2.0"
 
 MUTED='\033[0;2m'
 RED='\033[0;31m'
