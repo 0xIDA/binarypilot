@@ -1,99 +1,45 @@
 ---
 name: standard
-description: Balanced security assessment with systematic methodology and full attack surface coverage
+description: Balanced CTF solve — systematic methodology with full challenge coverage
 ---
 
-# Standard Testing Mode
+# Standard Solve Mode
 
-Balanced security assessment with structured methodology. Thorough coverage without exhaustive depth.
+Structured methodology. Thorough coverage without exhaustively trying every bypass on the last idea.
 
 ## Approach
 
-Systematic testing across the full attack surface. Understand the application before exploiting it.
+Understand the challenge before solving. Spawn a small specialist team per phase.
 
-## Phase 1: Reconnaissance
+## Phase 1: Understand (delegate)
 
-**Whitebox (source available)**
-- Map codebase structure: modules, entry points, routing
-- Run `semgrep` first-pass triage to prioritize risky flows before deep manual review
-- Run at least one AST-structural mapping pass (`sg` and/or Tree-sitter), then use outputs for route, sink, and trust-boundary mapping
-- Keep AST output bounded to relevant paths and hypotheses; avoid whole-repo generic function dumps
-- Identify architecture pattern (MVC, microservices, monolith)
-- Trace input vectors: forms, APIs, file uploads, headers, cookies
-- Review authentication and authorization flows
-- Analyze database interactions and ORM usage
-- Check dependencies and repo risks with `trivy fs`, `gitleaks`, and `trufflehog`
-- Understand the data model and sensitive data locations
+**Challenge with attachments**
 
-**Blackbox (no source)**
-- Crawl application thoroughly, interact with every feature
-- Enumerate endpoints, parameters, and functionality
-- Fingerprint technology stack
-- Map user roles and access levels
-- Capture traffic with proxy to understand request/response patterns
+- Extract and statically inspect every attachment: file, strings, binwalk, decompile/disassemble hot paths, sslsplit/network capture any protocols
+- Map architecture: entry points, input parsers, trust boundaries, flag storage location
+- Review any provided source for obvious flag handling or input validation logic
 
-## Phase 2: Business Logic Analysis
+**Instance-only**
 
-Before testing for vulnerabilities, understand the application:
+- Map the instance: ports, services, fingerprints, endpoint tree, auth surfaces
+- Fingerprint technologies/versions valuable for the category
+- Capture representative traffic via the proxy to understand request/response patterns
 
-- **Critical flows** - payments, registration, data access, admin functions
-- **Role boundaries** - what actions are restricted to which users
-- **Data access rules** - what data should be isolated between users
-- **State transitions** - order lifecycle, account status changes
-- **Trust boundaries** - where does privilege or sensitive data flow
+## Phase 2: Vector analysis
 
-## Phase 3: Systematic Testing
+Identify 1–3 plausible solve vectors by category:
 
-Test each attack surface methodically. Spawn focused subagents for different areas.
+- **Web**: auth bypass, injection, ssrf, idor, business logic, JWT, deserialization
+- **Crypto**: known-plaintext, small-e/coprime RSA, CBC/bitflip, weak RNG, custom cipher reversal
+- **Pwn**: classic stack/heap overflow, format string, ret2*, use-after-free
+- **Rev**: string decoding, XOR/single-byte ciphers, anti-debug bypass, keygen
+- **Forensics**: file carving, stego, protocol reassembly, deleted-data recovery
+- **Misc**: file-format quirks, encoding chains, logic puzzles
 
-**Input Validation**
-- Injection testing on all input fields (SQL, XSS, command, template)
-- File upload bypass attempts
-- Search and filter parameter manipulation
-- Redirect and URL parameter handling
+## Phase 3: Solve
 
-**Authentication & Session**
-- Brute force protection
-- Session token entropy and handling
-- Password reset flow analysis
-- Logout session invalidation
-- Authentication bypass techniques
+One subagent per plausible vector. Each delivers: working exploit/solver, candidate flag, confidence note.
 
-**Access Control**
-- Horizontal: user A accessing user B's resources
-- Vertical: unprivileged user accessing admin functions
-- API endpoints vs UI access control consistency
-- Direct object reference manipulation
+## Phase 4: Verify, submit, write
 
-**Business Logic**
-- Multi-step process bypass (skip steps, reorder)
-- Race conditions on state-changing operations
-- Boundary conditions: negative values, zero, extremes
-- Transaction replay and manipulation
-
-## Phase 4: Exploitation
-
-- Every finding requires a working proof-of-concept
-- Demonstrate actual impact, not theoretical risk
-- Chain vulnerabilities to show maximum severity
-- Document full attack path from entry to impact
-- Use Python scripts through `exec_command` for complex exploit development
-
-## Phase 5: Reporting
-
-- Document all confirmed vulnerabilities with reproduction steps
-- Severity based on exploitability and business impact
-- Remediation recommendations
-- Note areas requiring further investigation
-
-## Chaining
-
-Always ask: "If I can do X, what does that enable next?" Keep pivoting until reaching maximum privilege or data exposure.
-
-Prefer complete end-to-end paths (entry point → pivot → privileged action/data) over isolated findings. Use the application as a real user would—exploit must survive actual workflow and state transitions.
-
-When you discover a useful pivot (info leak, weak boundary, partial access), immediately pursue the next step rather than stopping at the first win.
-
-## Mindset
-
-Methodical and systematic. Document as you go. Validate everything—no assumptions about exploitability. Think about business impact, not just technical severity.
+Independent verification of the candidate; platform submit; writeup; stop instance; finish.

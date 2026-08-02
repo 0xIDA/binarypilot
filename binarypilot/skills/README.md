@@ -29,14 +29,16 @@ The skills are dynamically injected into the agent's system prompt, allowing it 
 
 | Category | Purpose |
 |----------|---------|
-| **`/vulnerabilities`** | Advanced testing techniques for core vulnerability classes like authentication bypasses, business logic flaws, and race conditions |
-| **`/frameworks`** | Specific testing methods for popular frameworks e.g. Django, Express, FastAPI, and Next.js |
-| **`/technologies`** | Specialized techniques for third-party services such as Supabase, Firebase, Auth0, and payment gateways |
-| **`/protocols`** | Protocol-specific testing patterns for GraphQL, WebSocket, OAuth, and other communication standards |
-| **`/tooling`** | Command-line playbooks for core sandbox tools (nmap, nuclei, httpx, ffuf, subfinder, naabu, katana, sqlmap) |
-| **`/cloud`** | Cloud provider security testing for AWS, Azure, GCP, and Kubernetes environments |
-| **`/reconnaissance`** | Advanced information gathering and enumeration techniques for comprehensive attack surface mapping |
-| **`/custom`** | Community-contributed skills for specialized or industry-specific testing scenarios |
+| **`/ctf`** | CTF playbooks: `crypto`, `pwn`, `rev`, `web`, `forensics`, `osint`, `misc` |
+| **`/vulnerabilities`** | Web-attack references kept for web-CTF: SQLi, XSS, SSTI, SSRF, XXE, RCE, deserialization, JWT, smuggling, file uploads, business logic, path traversal, race conditions, BFLA, LLM prompt injection, header injection |
+| **`/protocols`** | Protocol-specific patterns (GraphQL, OAuth) |
+| **`/tooling`** | Command-line playbooks for sandbox tools (agent_browser, ffuf, httpx, katana, naabu, nmap, nuclei, python, semgrep, sqlmap, subfinder) |
+| **`/reconnaissance`** | Asset discovery and enumeration |
+| **`/scan_modes`** | Solve modes (quick / standard / deep) — internal, auto-loaded |
+| **`/coordination`** | Root-agent orchestration playbook — internal |
+| **`/custom`** | Other specialized workflows (e.g. `source_aware_sast`) |
+
+When a CTF class proves it needs a dedicated playbook we add it under `/ctf` only; dropped upstream categories (cloud, frameworks, technologies) return only if a real CTF class demands them.
 
 Notable source-aware skills:
 - `source_aware_whitebox` (coordination): white-box orchestration playbook
