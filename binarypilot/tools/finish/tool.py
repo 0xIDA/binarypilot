@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import UTC
 from typing import Any
 
 from agents import RunContextWrapper, function_tool
@@ -45,6 +46,8 @@ def _do_finish(
         return {"success": False, "error": "Validation failed", "errors": errors}
 
     try:
+        from datetime import UTC, datetime
+
         from binarypilot.report.state import get_global_report_state
 
         report_state = get_global_report_state()
@@ -56,6 +59,10 @@ def _do_finish(
                 "message": "Scan completed (not persisted)",
                 "warning": "Results could not be persisted - report state unavailable",
             }
+        now_iso = datetime.now(UTC).isoformat()
+        report_state.run_record.setdefault("started_at", now_iso)
+        report_state.run_record["completed_at"] = now_iso
+        report_state.end_time = now_iso
         report_state.update_scan_final_fields(
             executive_summary=executive_summary.strip(),
             methodology=methodology.strip(),

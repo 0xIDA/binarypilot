@@ -887,9 +887,22 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
     if report_state:
         scan_completed = report_state.run_record.get("status") == "completed"
 
+    is_ctf_run = bool(getattr(report_state, "solves", None)) or any(
+        t.get("type") == "ctf_challenge"
+        for t in (report_state.run_record if report_state else {}).get("inputs", {}).get(
+            "targets", []
+        )
+    )
+    solves = getattr(report_state, "solves", []) if report_state else []
+
     completion_text = Text()
     if scan_completed:
-        completion_text.append("Penetration test completed", style="bold #22c55e")
+        if is_ctf_run and solves:
+            completion_text.append(f"Solved {len(solves)} challenge(s)", style="bold #22c55e")
+        elif is_ctf_run:
+            completion_text.append("Solve completed", style="bold #22c55e")
+        else:
+            completion_text.append("Penetration test completed", style="bold #22c55e")
     else:
         completion_text.append("SESSION ENDED", style="bold #eab308")
 
@@ -948,10 +961,7 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
     console.print("\n")
     console.print(panel)
     console.print()
-    console.print(
-        "[#60a5fa]b0f.ru[/]  [dim]·[/]  "
-        "[#60a5fa]github.com/0xIDA/binarypilot[/]"
-    )
+    console.print("[#60a5fa]b0f.ru[/]  [dim]·[/]  [#60a5fa]github.com/0xIDA/binarypilot[/]")
     console.print()
     if not args.non_interactive:
         notify_update(console)

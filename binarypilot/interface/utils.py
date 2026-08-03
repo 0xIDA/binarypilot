@@ -351,10 +351,60 @@ def build_final_stats_text(report_state: Any) -> Text:
     if not report_state:
         return stats_text
 
-    _build_vulnerability_stats(stats_text, report_state)
+    is_ctf = bool(getattr(report_state, "solves", None)) or any(
+        t.get("type") == "ctf_challenge"
+        for t in (getattr(report_state, "run_record", {}) or {})
+        .get("inputs", {})
+        .get("targets", [])
+    )
+
+    if is_ctf:
+        _build_solve_stats(stats_text, report_state)
+    else:
+        _build_vulnerability_stats(stats_text, report_state)
+    _build_elapsed_stat(stats_text, report_state)
     _build_llm_usage_stats(stats_text, report_state)
 
     return stats_text
+
+
+def _build_solve_stats(stats_text: Text, report_state: Any) -> None:
+    solves = list(getattr(report_state, "solves", []) or [])
+    stats_text.append("Solves       ", style="bold #22c55e")
+    stats_text.append(str(len(solves)), style="bold white")
+    for s in solves:
+        chal = s.get("challenge") or s.get("title") or "?"
+        flag = s.get("flag") or ""
+        name = f"{chal}: {flag}" if flag else str(chal)
+        stats_text.append("\n  ")
+        stats_text.append(f"• {name}", style="dim white")
+    stats_text.append("\n")
+
+
+def _build_elapsed_stat(stats_text: Text, report_state: Any) -> None:
+    start = getattr(report_state, "start_time", None)
+    end = getattr(report_state, "end_time", None)
+    if not start or not end:
+        return
+    from datetime import datetime
+
+    def _parse(s: Any) -> datetime | None:
+        try:
+            return datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+    start_dt = _parse(start)
+    end_dt = _parse(end)
+    if not start_dt or not end_dt:
+        return
+    secs = max(0, int((end_dt - start_dt).total_seconds()))
+    mins, s_ = divmod(secs, 60)
+    hours, m_ = divmod(mins, 60)
+    formatted = f"{hours}h {m_}m {s_}s" if hours else (f"{m_}m {s_}s" if mins else f"{s_}s")
+    stats_text.append("Elapsed      ", style="dim")
+    stats_text.append(formatted, style="white")
+    stats_text.append("\n")
 
 
 def build_live_stats_text(report_state: Any) -> Text:
