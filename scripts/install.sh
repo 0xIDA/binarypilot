@@ -62,10 +62,10 @@ have pipx || die "pipx still not resolvable — open a new shell and re-run"
 # -----------------------------------------------------------------------------
 
 step "2. binarypilot"
-INSTALL_SOURCE="${BINARYPILOT_SOURCE:-$PKG}"   # override for local repo: BINARYPILOT_SOURCE=/path/to/repo
+INSTALL_SOURCE="${BINARYPILOT_SOURCE:-git+https://github.com/0xIDA/binarypilot.git}"   # override with a local path for dev: BINARYPILOT_SOURCE=/path/to/repo
 if pipx list --short 2>/dev/null | grep -q "^${PKG} "; then
   say "upgrading existing ${PKG}"
-  pipx upgrade --quiet "${PKG}" || pipx install --force --quiet "${INSTALL_SOURCE}"
+  pipx upgrade --quiet "${PKG}" 2>/dev/null || pipx install --force --quiet "${INSTALL_SOURCE}"
 else
   say "installing ${INSTALL_SOURCE}"
   pipx install --quiet "${INSTALL_SOURCE}"
