@@ -389,11 +389,14 @@ async def create_agent(
 ) -> str:
     """Spawn a specialist child agent to run in parallel.
 
-    Decompose complex pentests by handing focused subtasks to dedicated
+    Decompose complex solves by handing focused subtasks to dedicated
     children. The child runs asynchronously — the parent continues
     immediately and can ``wait_for_agents`` later (or just keep
     working in parallel). When the child calls ``agent_finish``, its
-    completion report lands in the parent's inbox.
+    completion report lands in the parent's inbox. Every spawn task
+    automatically gets a TERMINATION CONTRACT prepended telling the
+    child its final action MUST be agent_finish — do not delete it
+    or rephrase your task to contradict it.
 
     **Before spawning, call ``view_agent_graph``** to confirm no
     existing agent already covers this scope — duplicate specialists
@@ -462,7 +465,13 @@ async def create_agent(
         result = await spawner(
             parent_ctx=inner,
             name=name,
-            task=task,
+            task=(
+                "TERMINATION CONTRACT (read first): your final action MUST be the "
+                "`agent_finish` tool call with your complete findings. A turn that ends "
+                "with plain text and no tool call does NOT terminate you — the system will "
+                "keep nudging. End-of-task = exactly one `agent_finish` call, even if the "
+                "task is incomplete (report partial findings clearly).\n\n" + task
+            ),
             skills=skill_list,
             parent_history=parent_history,
         )
