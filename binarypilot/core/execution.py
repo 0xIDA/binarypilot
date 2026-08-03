@@ -536,6 +536,13 @@ async def _exhausted_recovery(
     Interactive runs park instead of dying: a human is attached and can message
     any agent, so the scan stays resumable. Autonomous runs have nobody to
     resume them, so they fail loudly.
+
+    Interactive subagents (non-root) self-nudge once before parking: their
+    parent doesn't watch them, so a parked child burns the parent's full
+    wait_for_agents timeout on a message its parent had to hand-write. Force
+    one more turn with a closing contract instead of parking — if it still
+    can't finish, it parks and the parent gets the same stall notification as
+    before, with one extra turn invested.
     """
     if not interactive:
         await coordinator.set_status(agent_id, "crashed")
@@ -543,6 +550,34 @@ async def _exhausted_recovery(
         raise MaxTurnsExceeded(
             "Agent exhausted recovery attempts without calling finish_scan or agent_finish."
         )
+
+    if coordinator.parent_of.get(agent_id) is not None:
+        # Non-root interactive agent: one forced self-nudge before parking.
+        logger.warning(
+            "agent %s exhausted tool-call recovery attempts; self-nudging once before parking",
+            agent_id,
+        )
+        try:
+            await coordinator.send(
+                agent_id,
+                {
+                    "from": "system",
+                    "type": "forced_closing",
+                    "content": (
+                        "You have absorbed the tool-call recovery budget without finishing. "
+                        "Your next action MUST be the `agent_finish` tool call, describing "
+                        "what you completed and what remains. Do NOT end the turn with plain "
+                        "text. This is your last unpushed turn before you park."
+                    ),
+                },
+                interrupt=True,
+            )
+        except Exception:
+            logger.exception("self-nudge for %s failed; parking anyway", agent_id)
+        else:
+            # Let the outer loop take another step on this agent before we park. The
+            # framework will route the queued message on the next cycle.
+            return result
 
     logger.warning(
         "agent %s exhausted tool-call recovery attempts; parking until a message arrives",
