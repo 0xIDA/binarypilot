@@ -23,7 +23,7 @@ Headless mode (`-n`) runs in any CI runner with Docker. Standard pattern:
   run: binarypilot -n --challenge <url>
 ```
 
-See [`README.md`](../README.md#cicd-github-actions) for a working workflow snippet.
+See [`README.md`](../README.md#cicd) for a working workflow snippet.
 
 ## Local viewer
 
