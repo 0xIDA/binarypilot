@@ -34,6 +34,7 @@ Read the mitigations first. `checksec --file=<binary>` and `file <binary>` befor
 ## Toolkit (already in image)
 
 - pwntools: `from pwn import *`; `p = remote(host, port)` / `process('./challenge')`; `p.sendlineafter(b'> ', payload)`.
+- **Interpreter**: `/app/.venv/bin/python3` is the image's CTF Python (pwntools, pycryptodome, sympy, z3, checksec.py). Always invoke it by absolute path — bare `python3` is the system python with none of these installed.
 - GDB with gef/pwndbg (already): `gdb ./challenge`, `b main`, `cyclic -l <val>` to find offsets, `vmmap`, `telescope`.
 - ROPgadget, ropper, one_gadget, pwninit, patchelf.
 - Decompilers: `r2 -A ./challenge` / `rabin2 -zI`; Ghidra-headless if baked in.
