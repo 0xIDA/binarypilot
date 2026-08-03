@@ -7,7 +7,6 @@
 <a href="https://github.com/0xIDA/binarypilot"><img src="https://img.shields.io/github/stars/0xIDA/binarypilot?style=flat-square" alt="GitHub Stars"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-3b82f6?style=flat-square" alt="License"></a>
 <a href="https://pypi.org/project/binarypilot-agent/"><img src="https://img.shields.io/pypi/v/binarypilot-agent?style=flat-square" alt="PyPI Version"></a>
-<a href="https://x.com/binarypilot_ai"><img src="https://img.shields.io/badge/X-@binarypilot__ai-1DA1F2?style=flat-square" alt="X"></a>
 <a href="https://b0f.ru"><img src="https://img.shields.io/badge/Site-b0f.ru-2b9246?style=flat-square" alt="b0f.ru"></a>
 
 ---
