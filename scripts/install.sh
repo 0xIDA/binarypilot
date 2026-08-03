@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
+# BinaryPilot installer — curl | bash
+#
+#   curl -sSL https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh | bash
+#
+# What this does:
+#   1. Locates or installs pipx, installs binarypilot-agent into it.
+#   2. Ensures ~/.local/bin (or your platform equivalent) is on PATH going forward
+#      via your shell rc file.
+#   3. Pulls the sandbox image (docker pull ghcr.io/0xida/binarypilot-sandbox:1.2.0).
+#   4. Seeds ~/.binarypilot/cli-config.json if you set HTB_TOKEN / FLAGYARD_USERNAME /
+#      FLAGYARD_PASSWORD / FLAGYARD_ACCESS_TOKEN / BINARYPILOT_LLM / LLM_API_KEY in env.
+#
+# Idempotent: re-running is safe.
 
 set -euo pipefail
 
 APP=binarypilot
-REPO="usebinarypilot/binarypilot"
-BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.2.0"
+PKG=binarypilot-agent
+IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.2.0"
+CONFIG_DIR="${BINARYPILOT_CONFIG_DIR:-$HOME/.binarypilot}"
+CONFIG_FILE="${BINARYPILOT_CONFIG_FILE:-$CONFIG_DIR/cli-config.json}"
 
 MUTED='\033[0;2m'
 RED='\033[0;31m'
@@ -13,339 +28,144 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-requested_version=${VERSION:-}
-SKIP_DOWNLOAD=false
+say()  { echo -e "${MUTED}$1${NC}"; }
+ok()   { echo -e "${GREEN}✓ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
+die()  { echo -e "${RED}✗ $1${NC}" >&2; exit 1; }
+step() { echo -e "\n${CYAN}$1${NC}"; }
 
-raw_os=$(uname -s)
-os=$(echo "$raw_os" | tr '[:upper:]' '[:lower:]')
-case "$raw_os" in
-  Darwin*) os="macos" ;;
-  Linux*) os="linux" ;;
-  MINGW*|MSYS*|CYGWIN*) os="windows" ;;
+[ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ] || die "Only Linux/macOS supported (Windows: use WSL)"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# -----------------------------------------------------------------------------
+# 1. pipx
+# -----------------------------------------------------------------------------
+
+step "1. pipx"
+if ! have pipx; then
+  say "pipx not found — installing..."
+  if have python3; then
+    python3 -m pip install --user --quiet pipx || die "pip install --user pipx failed"
+    python3 -m pipx ensurepath --quiet || true
+  else
+    die "python3 required. Install python3, then re-run."
+  fi
+fi
+# PATH for this session even if rc file hasn't been re-sourced
+PIPX_BIN="${PIPX_BIN:-$HOME/.local/bin}"
+export PATH="$PIPX_BIN:$PATH"
+have pipx || die "pipx still not resolvable — open a new shell and re-run"
+
+# -----------------------------------------------------------------------------
+# 2. binarypilot
+# -----------------------------------------------------------------------------
+
+step "2. binarypilot"
+INSTALL_SOURCE="${BINARYPILOT_SOURCE:-$PKG}"   # override for local repo: BINARYPILOT_SOURCE=/path/to/repo
+if pipx list --short 2>/dev/null | grep -q "^${PKG} "; then
+  say "upgrading existing ${PKG}"
+  pipx upgrade --quiet "${PKG}" || pipx install --force --quiet "${INSTALL_SOURCE}"
+else
+  say "installing ${INSTALL_SOURCE}"
+  pipx install --quiet "${INSTALL_SOURCE}"
+fi
+ok "binarypilot $( "$HOME/.local/bin/$APP" --version 2>/dev/null | head -1 || echo installed)"
+
+# -----------------------------------------------------------------------------
+# 3. PATH (shell rc)
+# -----------------------------------------------------------------------------
+
+step "3. PATH"
+write_path_to_rc() {
+  local rc="$1" line="$2"
+  if [ -f "$rc" ] && grep -Fxq "$line" "$rc"; then
+    return 0
+  fi
+  printf '\n# binarypilot\n%s\n' "$line" >> "$rc"
+  say "appended to $rc"
+}
+case "$(basename "${SHELL:-sh}")" in
+  zsh)  write_path_to_rc "$HOME/.zshrc"   'export PATH="$HOME/.local/bin:$PATH"' ;;
+  fish) write_path_to_rc "$HOME/.config/fish/config.fish" 'fish_add_path $HOME/.local/bin' ;;
+  *)    write_path_to_rc "$HOME/.bashrc"  'export PATH="$HOME/.local/bin:$PATH"' ;;
 esac
 
-arch=$(uname -m)
-if [[ "$arch" == "aarch64" ]]; then
-  arch="arm64"
-fi
-if [[ "$arch" == "x86_64" ]]; then
-  arch="x86_64"
-fi
+# -----------------------------------------------------------------------------
+# 4. Docker image
+# -----------------------------------------------------------------------------
 
-if [ "$os" = "macos" ] && [ "$arch" = "x86_64" ]; then
-  rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
-  if [ "$rosetta_flag" = "1" ]; then
-    arch="arm64"
+step "4. Sandbox image"
+if ! have docker; then
+  warn "docker CLI not on PATH — install Docker and run: docker pull $IMAGE"
+else
+  if docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    say "image already present, checking for updates"
+    docker pull -q "$IMAGE" >/dev/null || warn "pull failed (still have a local copy)"
+  else
+    say "pulling $IMAGE (~2 GB — grab coffee)"
+    docker pull "$IMAGE" || warn "pull failed — try: docker pull $IMAGE"
   fi
 fi
 
-combo="$os-$arch"
-case "$combo" in
-  linux-x86_64|linux-arm64|macos-x86_64|macos-arm64|windows-x86_64)
-    ;;
-  *)
-    echo -e "${RED}Unsupported OS/Arch: $os/$arch${NC}"
-    exit 1
-    ;;
-esac
+# -----------------------------------------------------------------------------
+# 5. cli-config.json (credentials)
+# -----------------------------------------------------------------------------
 
-archive_ext=".tar.gz"
-if [ "$os" = "windows" ]; then
-  archive_ext=".zip"
-fi
+step "5. Config (optional — env vars seed ~/.binarypilot/cli-config.json)"
+CONFIG_DIR=$(dirname "$CONFIG_FILE")
+mkdir -p "$CONFIG_DIR"
+have python3 || die "python3 required"
 
-target="$os-$arch"
+CONFIG_FILE="$CONFIG_FILE" BINARYPILOT_LLM="${BINARYPILOT_LLM:-}" LLM_API_KEY="${LLM_API_KEY:-}" LLM_API_BASE="${LLM_API_BASE:-}" LLM_REASONING_EFFORT="${LLM_REASONING_EFFORT:-}" HTB_TOKEN="${HTB_TOKEN:-}" FLAGYARD_USERNAME="${FLAGYARD_USERNAME:-}" FLAGYARD_PASSWORD="${FLAGYARD_PASSWORD:-}" FLAGYARD_ACCESS_TOKEN="${FLAGYARD_ACCESS_TOKEN:-}" FLAGYARD_API_BASE="${FLAGYARD_API_BASE:-}" PERPLEXITY_API_KEY="${PERPLEXITY_API_KEY:-}" python3 - <<'PY'
+import json, os, pathlib
 
-if [ "$os" = "linux" ]; then
-    if ! command -v tar >/dev/null 2>&1; then
-         echo -e "${RED}Error: 'tar' is required but not installed.${NC}"
-         exit 1
-    fi
-fi
+path = pathlib.Path(os.environ["CONFIG_FILE"])
+existing = {}
+if path.exists():
+    try:
+        existing = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        path.unlink()
 
-if [ "$os" = "windows" ]; then
-    if ! command -v unzip >/dev/null 2>&1; then
-        echo -e "${RED}Error: 'unzip' is required but not installed.${NC}"
-        exit 1
-    fi
-fi
+env_block = existing.get("env", {})
+candidates = [
+    "BINARYPILOT_LLM",
+    "LLM_API_KEY",
+    "LLM_API_BASE",
+    "LLM_REASONING_EFFORT",
+    "HTB_TOKEN",
+    "FLAGYARD_USERNAME",
+    "FLAGYARD_PASSWORD",
+    "FLAGYARD_ACCESS_TOKEN",
+    "FLAGYARD_API_BASE",
+    "PERPLEXITY_API_KEY",
+]
+for key in candidates:
+    v = os.environ.get(key)
+    if v:
+        env_block[key] = v
 
-INSTALL_DIR=$HOME/.binarypilot/bin
-mkdir -p "$INSTALL_DIR"
+captured = [k for k in candidates if k in env_block]
+if captured:
+    existing["env"] = env_block
+    path.write_text(json.dumps(existing, indent=2))
+    path.chmod(0o600)
+    print(f"wrote {len(captured)} env var(s) to {path}: {', '.join(captured)}")
+else:
+    print("no env vars to capture — skipping cli-config.json")
+PY
 
-if [ -z "$requested_version" ]; then
-    specific_version=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
-    if [[ $? -ne 0 || -z "$specific_version" ]]; then
-        echo -e "${RED}Failed to fetch version information${NC}"
-        exit 1
-    fi
-else
-    specific_version=$requested_version
-fi
-
-filename="$APP-${specific_version}-${target}${archive_ext}"
-url="https://github.com/$REPO/releases/download/v${specific_version}/$filename"
-
-print_message() {
-    local level=$1
-    local message=$2
-    local color=""
-    case $level in
-        info) color="${NC}" ;;
-        success) color="${GREEN}" ;;
-        warning) color="${YELLOW}" ;;
-        error) color="${RED}" ;;
-    esac
-    echo -e "${color}${message}${NC}"
-}
-
-check_existing_installation() {
-    local found_paths=()
-    while IFS= read -r -d '' path; do
-        found_paths+=("$path")
-    done < <(which -a binarypilot 2>/dev/null | tr '\n' '\0' || true)
-
-    if [ ${#found_paths[@]} -gt 0 ]; then
-        for path in "${found_paths[@]}"; do
-            if [[ ! -e "$path" ]] || [[ "$path" == "$INSTALL_DIR/binarypilot"* ]]; then
-                continue
-            fi
-
-            if [[ -n "$path" ]]; then
-                echo -e "${MUTED}Found existing binarypilot at: ${NC}$path"
-
-                if [[ "$path" == *".local/bin"* ]]; then
-                    echo -e "${MUTED}Removing old pipx installation...${NC}"
-                    if command -v pipx >/dev/null 2>&1; then
-                        pipx uninstall binarypilot-agent 2>/dev/null || true
-                    fi
-                    rm -f "$path" 2>/dev/null || true
-                elif [[ -L "$path" || -f "$path" ]]; then
-                    echo -e "${MUTED}Removing old installation...${NC}"
-                    rm -f "$path" 2>/dev/null || true
-                fi
-            fi
-        done
-    fi
-}
-
-check_version() {
-    check_existing_installation
-
-    if [[ -x "$INSTALL_DIR/binarypilot" ]]; then
-        installed_version=$("$INSTALL_DIR/binarypilot" --version 2>/dev/null | awk '{print $2}' || echo "")
-        if [[ "$installed_version" == "$specific_version" ]]; then
-            print_message info "${GREEN}✓ BinaryPilot ${NC}$specific_version${GREEN} already installed${NC}"
-            SKIP_DOWNLOAD=true
-        elif [[ -n "$installed_version" ]]; then
-            print_message info "${MUTED}Installed: ${NC}$installed_version ${MUTED}→ Upgrading to ${NC}$specific_version"
-        fi
-    fi
-}
-
-download_and_install() {
-    print_message info "\n${CYAN}🦉 Installing BinaryPilot${NC} ${MUTED}version: ${NC}$specific_version"
-    print_message info "${MUTED}Platform: ${NC}$target\n"
-
-    local tmp_dir=$(mktemp -d)
-    cd "$tmp_dir"
-
-    echo -e "${MUTED}Downloading...${NC}"
-    curl -# -L -o "$filename" "$url"
-
-    if [ ! -f "$filename" ]; then
-        echo -e "${RED}Download failed${NC}"
-        exit 1
-    fi
-
-    echo -e "${MUTED}Extracting...${NC}"
-    if [ "$os" = "windows" ]; then
-        unzip -q "$filename"
-        mv "binarypilot-${specific_version}-${target}.exe" "$INSTALL_DIR/binarypilot.exe"
-    else
-        tar -xzf "$filename"
-        mv "binarypilot-${specific_version}-${target}" "$INSTALL_DIR/binarypilot"
-        chmod 755 "$INSTALL_DIR/binarypilot"
-    fi
-
-    cd - > /dev/null
-    rm -rf "$tmp_dir"
-
-    echo -e "${GREEN}✓ BinaryPilot installed to $INSTALL_DIR${NC}"
-}
-
-check_docker() {
-    echo ""
-    if ! command -v docker >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠ Docker not found${NC}"
-        echo -e "${MUTED}BinaryPilot requires Docker to run the security sandbox.${NC}"
-        echo -e "${MUTED}Please install Docker: ${NC}https://docs.docker.com/get-docker/"
-        echo ""
-        return 1
-    fi
-
-    if ! docker info >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠ Docker daemon not running${NC}"
-        echo -e "${MUTED}Please start Docker and run: ${NC}docker pull $BINARYPILOT_IMAGE"
-        echo ""
-        return 1
-    fi
-
-    echo -e "${MUTED}Checking for sandbox image...${NC}"
-    if docker image inspect "$BINARYPILOT_IMAGE" >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Sandbox image already available${NC}"
-    else
-        echo -e "${MUTED}Pulling sandbox image (this may take a few minutes)...${NC}"
-        if docker pull "$BINARYPILOT_IMAGE"; then
-            echo -e "${GREEN}✓ Sandbox image pulled successfully${NC}"
-        else
-            echo -e "${YELLOW}⚠ Failed to pull sandbox image${NC}"
-            echo -e "${MUTED}You can pull it manually later: ${NC}docker pull $BINARYPILOT_IMAGE"
-        fi
-    fi
-    return 0
-}
-
-add_to_path() {
-    local config_file=$1
-    local command=$2
-
-    if grep -Fxq "$command" "$config_file" 2>/dev/null; then
-        print_message info "${MUTED}PATH already configured in ${NC}$config_file"
-    elif [[ -w $config_file ]]; then
-        echo -e "\n# binarypilot" >> "$config_file"
-        echo "$command" >> "$config_file"
-        print_message info "${MUTED}Successfully added ${NC}binarypilot ${MUTED}to \$PATH in ${NC}$config_file"
-    else
-        print_message warning "Manually add the directory to $config_file (or similar):"
-        print_message info "  $command"
-    fi
-}
-
-setup_path() {
-    XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
-    current_shell=$(basename "$SHELL")
-
-    case $current_shell in
-        fish)
-            config_files="$HOME/.config/fish/config.fish"
-            ;;
-        zsh)
-            config_files="${ZDOTDIR:-$HOME}/.zshrc ${ZDOTDIR:-$HOME}/.zshenv $XDG_CONFIG_HOME/zsh/.zshrc $XDG_CONFIG_HOME/zsh/.zshenv"
-            ;;
-        bash)
-            config_files="$HOME/.bashrc $HOME/.bash_profile $HOME/.profile $XDG_CONFIG_HOME/bash/.bashrc $XDG_CONFIG_HOME/bash/.bash_profile"
-            ;;
-        ash)
-            config_files="$HOME/.ashrc $HOME/.profile /etc/profile"
-            ;;
-        sh)
-            config_files="$HOME/.ashrc $HOME/.profile /etc/profile"
-            ;;
-        *)
-            config_files="$HOME/.bashrc $HOME/.bash_profile $XDG_CONFIG_HOME/bash/.bashrc $XDG_CONFIG_HOME/bash/.bash_profile"
-            ;;
-    esac
-
-    config_file=""
-    for file in $config_files; do
-        if [[ -f $file ]]; then
-            config_file=$file
-            break
-        fi
-    done
-
-    if [[ -z $config_file ]]; then
-        print_message warning "No config file found for $current_shell. You may need to manually add to PATH:"
-        print_message info "  export PATH=$INSTALL_DIR:\$PATH"
-    elif [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-        case $current_shell in
-            fish)
-                add_to_path "$config_file" "fish_add_path $INSTALL_DIR"
-                ;;
-            zsh)
-                add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
-                ;;
-            bash)
-                add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
-                ;;
-            ash)
-                add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
-                ;;
-            sh)
-                add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
-                ;;
-            *)
-                export PATH=$INSTALL_DIR:$PATH
-                print_message warning "Manually add the directory to $config_file (or similar):"
-                print_message info "  export PATH=$INSTALL_DIR:\$PATH"
-                ;;
-        esac
-    fi
-
-    if [ -n "${GITHUB_ACTIONS-}" ] && [ "${GITHUB_ACTIONS}" == "true" ]; then
-        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
-        print_message info "Added $INSTALL_DIR to \$GITHUB_PATH"
-    fi
-}
-
-verify_installation() {
-    export PATH="$INSTALL_DIR:$PATH"
-
-    local which_binarypilot=$(which binarypilot 2>/dev/null || echo "")
-
-    if [[ "$which_binarypilot" != "$INSTALL_DIR/binarypilot" && "$which_binarypilot" != "$INSTALL_DIR/binarypilot.exe" ]]; then
-        if [[ -n "$which_binarypilot" ]]; then
-            echo -e "${YELLOW}⚠ Found conflicting binarypilot at: ${NC}$which_binarypilot"
-            echo -e "${MUTED}Attempting to remove...${NC}"
-
-            if rm -f "$which_binarypilot" 2>/dev/null; then
-                echo -e "${GREEN}✓ Removed conflicting installation${NC}"
-            else
-                echo -e "${YELLOW}Could not remove automatically.${NC}"
-                echo -e "${MUTED}Please remove manually: ${NC}rm $which_binarypilot"
-            fi
-        fi
-    fi
-
-    if [[ -x "$INSTALL_DIR/binarypilot" ]]; then
-        local version=$("$INSTALL_DIR/binarypilot" --version 2>/dev/null | awk '{print $2}' || echo "unknown")
-        echo -e "${GREEN}✓ BinaryPilot ${NC}$version${GREEN} ready${NC}"
-    fi
-}
-
-check_version
-if [ "$SKIP_DOWNLOAD" = false ]; then
-    download_and_install
-fi
-setup_path
-verify_installation
-check_docker
+# -----------------------------------------------------------------------------
+# Done
+# -----------------------------------------------------------------------------
 
 echo ""
-echo -e "${CYAN}"
-echo "   ███████╗████████╗██████╗ ██╗██╗  ██╗"
-echo "   ██╔════╝╚══██╔══╝██╔══██╗██║╚██╗██╔╝"
-echo "   ███████╗   ██║   ██████╔╝██║ ╚███╔╝ "
-echo "   ╚════██║   ██║   ██╔══██╗██║ ██╔██╗ "
-echo "   ███████║   ██║   ██║  ██║██║██╔╝ ██╗"
-echo "   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝"
-echo -e "${NC}"
-echo -e "${MUTED}  AI Penetration Testing Agent${NC}"
+step "✅ BinaryPilot ready"
+echo "  binarypilot --challenge https://app.hackthebox.com/challenges/15"
+echo "  binarypilot --challenge \"Lame\" --platform htb"
+echo "  binarypilot --challenge \"Web 01\" --platform flagyard"
 echo ""
-echo -e "${MUTED}To get started:${NC}"
-echo ""
-echo -e "  ${CYAN}1.${NC} Set your environment:"
-echo -e "     ${MUTED}export LLM_API_KEY='your-api-key'${NC}"
-echo -e "     ${MUTED}export BINARYPILOT_LLM='openai/gpt-5.4'${NC}"
-echo ""
-echo -e "  ${CYAN}2.${NC} Run a penetration test:"
-echo -e "     ${MUTED}binarypilot --target https://example.com${NC}"
-echo ""
-echo -e "${MUTED}For more information visit ${NC}https://binarypilot.ai"
-echo -e "${MUTED}Supported models ${NC}https://docs.binarypilot.ai/llm-providers/overview"
-echo -e "${MUTED}Join our community ${NC}https://discord.gg/binarypilot-ai"
-echo ""
-
-echo -e "${YELLOW}→${NC} Run ${MUTED}source ~/.$(basename $SHELL)rc${NC} or open a new terminal"
-echo ""
+say "New shells load binarypilot automatically. Current shell: run"
+say "  source ~/.$(basename "${SHELL:-sh}")rc"
+say "Docs: https://github.com/0xIDA/binarypilot"
