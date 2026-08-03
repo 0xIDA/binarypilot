@@ -15,7 +15,7 @@ Thank you for your interest in contributing to BinaryPilot! This guide will help
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/usebinarypilot/binarypilot.git
+   git clone https://github.com/0xIDA/binarypilot.git
    cd binarypilot
    ```
 
@@ -36,7 +36,8 @@ Thank you for your interest in contributing to BinaryPilot! This guide will help
 
 4. **Run BinaryPilot in development mode**
    ```bash
-   uv run binarypilot --target https://example.com
+   export FLAGYARD_USERNAME="..." FLAGYARD_PASSWORD="..."  # or HTB_TOKEN
+   uv run binarypilot --challenge https://ctf.flagyard.com/labs/12/challenges/34
    ```
 
 ## 📚 Contributing Skills

@@ -1,10 +1,7 @@
-# BinaryPilot Documentation
+# Docs
 
-Documentation source files for BinaryPilot, powered by [Mintlify](https://mintlify.com).
-
-## Local Preview
-
-```bash
-npm i -g mintlify
-cd docs && mintlify dev
-```
+- [`cli.md`](cli.md) — full flag reference
+- [`platforms.md`](platforms.md) — per-platform auth env + API notes + flag discipline
+- [`architecture.md`](architecture.md) — agent tree, prompt wiring, skills layout, report pipeline, triage table
+- [`docker.md`](docker.md) — image contents + build + publish
+- [`../binarypilot/skills/README.md`](../binarypilot/skills/README.md) — skill categories + how to add one
