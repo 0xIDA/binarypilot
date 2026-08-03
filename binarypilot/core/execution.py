@@ -558,8 +558,7 @@ async def _exhausted_recovery(
         # If it still doesn't finish after that wake-up, the next cycle through
         # this handler runs with a fresh recovery budget and parks again properly.
         logger.warning(
-            "agent %s exhausted tool-call recovery attempts; self-nudging once "
-            "before parking",
+            "agent %s exhausted tool-call recovery attempts; self-nudging once before parking",
             agent_id,
         )
         try:
