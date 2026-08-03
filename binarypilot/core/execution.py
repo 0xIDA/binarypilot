@@ -552,9 +552,14 @@ async def _exhausted_recovery(
         )
 
     if coordinator.parent_of.get(agent_id) is not None:
-        # Non-root interactive agent: one forced self-nudge before parking.
+        # Non-root interactive agent: one forced self-nudge injected BEFORE parking.
+        # The park itself stays — the outer waiting loop will wake on the pending
+        # message and give the agent one more turn to reach ``agent_finish``.
+        # If it still doesn't finish after that wake-up, the next cycle through
+        # this handler runs with a fresh recovery budget and parks again properly.
         logger.warning(
-            "agent %s exhausted tool-call recovery attempts; self-nudging once before parking",
+            "agent %s exhausted tool-call recovery attempts; self-nudging once "
+            "before parking",
             agent_id,
         )
         try:
@@ -567,17 +572,13 @@ async def _exhausted_recovery(
                         "You have absorbed the tool-call recovery budget without finishing. "
                         "Your next action MUST be the `agent_finish` tool call, describing "
                         "what you completed and what remains. Do NOT end the turn with plain "
-                        "text. This is your last unpushed turn before you park."
+                        "text."
                     ),
                 },
                 interrupt=True,
             )
         except Exception:
             logger.exception("self-nudge for %s failed; parking anyway", agent_id)
-        else:
-            # Let the outer loop take another step on this agent before we park. The
-            # framework will route the queued message on the next cycle.
-            return result
 
     logger.warning(
         "agent %s exhausted tool-call recovery attempts; parking until a message arrives",
