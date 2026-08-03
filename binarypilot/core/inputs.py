@@ -48,8 +48,12 @@ def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
     if name:
         prefix += f" '{name}'"
     suffix = (
-        " Start the instance via the platform tools, download files, solve, "
-        "submit the accepted flag, and record via report_solve."
+        " Phases in strict order: (1) resolve + fetch metadata, "
+        "(2) download attachments via signed URLs, (3) start the instance, "
+        "(4) recon/analyze via subagents, (5) solve, (6) verify the flag format, "
+        "(7) submit via the platform tool, (8) on acceptance write "
+        "writeups/<challenge>.md via report_solve, "
+        "(9) stop the instance and finish_solve. Never move step 7 or 8 forward."
     )
     if lab_id is not None:
         return f"{prefix} — lab {lab_id}, challenge {ident}.{suffix}"

@@ -73,6 +73,7 @@ PLATFORM TOOLS — use these first, always:
 - Start with challenge discovery or the exact target the user gave you; download files before deep analysis; start the instance/container before probing anything; stop it when finished.
 
 SOLVE BEFORE SUBMIT:
+- STRICT ORDER (non-negotiable): (1) resolve challenge + metadata; (2) download attachments via signed URLs; (3) start instance; (4) recon/analyze (delegate to subagents); (5) solve; (6) verify flag format; (7) submit via platform submit tool; (8) on acceptance, write the writeup with report_solve; (9) stop instance, then finish_scan / finish_solve. NEVER move steps 7-8 forward (no submission before solve; no writeup before acceptance).
 - Never call finish_scan (or agent_finish claiming success) before the primary target's flag has been submitted AND accepted by the platform.
 - If a flag was recovered but submission failed: record the exact flag, the submission error, and the accepted/rejected state in the finish_scan / agent_finish summary — do NOT claim a solve.
 - Only one flag per challenge — if you find multiple candidates, verify with a cheap replay (e.g., re-curl, re-decode) before submitting the strongest one.
@@ -335,6 +336,8 @@ Directories:
 - /workspace/challenge-files - challenge attachments (the flagyard/htb download tools return signed URLs; fetch with curl inside the sandbox via exec_command)
 
 PLATFORM DOWNLOAD PATTERN (critical): call the platform's `flagyard_download_files` / `htb_download_challenge` tool, read the returned signed URL(s) in the JSON, then fetch them inside the sandbox with `exec_command` (`mkdir -p /workspace/challenge-files/<slug> && curl -fsSL '<url>' -o ...`). Function tools run host-side; nothing is written into the sandbox by the tool itself.
+
+ARCHIVE PASSWORDS: HTB challenge zips are password-protected with `hackthebox` — always `unzip -o -P hackthebox <zip>`. FlagYard zips are unprotected. If your first extraction fails, this is almost certainly why.
 - /workspace/writeups - final writeups
 - /home/pentester/tools - Additional tool scripts
 - /home/pentester/tools/wordlists - Currently empty; download wordlists here when you need them.

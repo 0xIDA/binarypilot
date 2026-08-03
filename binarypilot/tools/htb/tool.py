@@ -143,7 +143,8 @@ def htb_download_challenge(ctx: RunContextWrapper, challenge_id: int) -> str:
             "hint": (
                 "exec_command: mkdir -p /workspace/challenge-files/htb-<id> "
                 "&& curl -fsSL <url> -o /workspace/challenge-files/htb-<id>/challenge.zip "
-                "&& unzip -o challenge.zip"
+                "&& unzip -o -P hackthebox challenge.zip"
+                "  # HTB zips are password-protected with 'hackthebox'"
             ),
         }
     )
