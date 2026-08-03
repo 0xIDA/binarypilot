@@ -390,8 +390,8 @@ _CALLBACK_HTML = """<!doctype html>
   .close { margin: 24px 0 0; color: #5a5a5a; font-size: .78rem; text-align: center; }
 </style></head>
 <body>
-  <a class="topbar" href="https://binarypilot.ai" target="_blank" rel="noopener"
-     aria-label="BinaryPilot — binarypilot.ai">
+  <a class="topbar" href="https://b0f.ru" target="_blank" rel="noopener"
+     aria-label="BinaryPilot — b0f.ru">
     <!--LOGO-->
     <span>BinaryPilot</span>
   </a>
@@ -405,11 +405,9 @@ _CALLBACK_HTML = """<!doctype html>
     <p class="tagline">Autonomous AI hackers that <b>find and fix</b> your app's
       vulnerabilities.</p>
     <nav class="links">
-      <a href="https://binarypilot.ai" target="_blank" rel="noopener">binarypilot.ai</a>
+      <a href="https://b0f.ru" target="_blank" rel="noopener">b0f.ru</a>
       <span class="dot">·</span>
-      <a href="https://docs.binarypilot.ai" target="_blank" rel="noopener">docs</a>
-      <span class="dot">·</span>
-      <a href="https://discord.gg/binarypilot-ai" target="_blank" rel="noopener">community</a>
+      <a href="https://github.com/0xIDA/binarypilot" target="_blank" rel="noopener">github</a>
     </nav>
   </main>
   <p class="close">You can close this tab.</p>

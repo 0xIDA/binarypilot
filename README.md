@@ -1,279 +1,139 @@
-<p align="center">
-  <a href="https://github.com/0xIDA/binarypilot">
-    <img src="https://github.com/0xIDA/.github/raw/main/imgs/cover.png" alt="BinaryPilot Banner" width="100%">
-  </a>
-</p>
-
-<div align="center">
-
 # BinaryPilot
 
-### The open-source AI CTF solver. Autonomous agents that solve HackTheBox and FlagYard challenges end to end — flag, writeup, submission.
+### Autonomous CTF solver. Resolves, instances, solves, submits, writes the writeup. HackTheBox + FlagYard.
 
 <br/>
 
-<a href="https://github.com/0xIDA/binarypilot"><img src="https://img.shields.io/badge/Docs-GitHub-2b9246?style=for-the-badge&logo=gitbook&logoColor=white" alt="Docs"></a>
 <a href="https://github.com/0xIDA/binarypilot"><img src="https://img.shields.io/github/stars/0xIDA/binarypilot?style=flat-square" alt="GitHub Stars"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-3b82f6?style=flat-square" alt="License"></a>
 <a href="https://pypi.org/project/binarypilot-agent/"><img src="https://img.shields.io/pypi/v/binarypilot-agent?style=flat-square" alt="PyPI Version"></a>
-
-<a href="https://discord.gg/binarypilot"><img src="https://github.com/0xIDA/.github/raw/main/imgs/Discord.png" height="40" alt="Join Discord"></a>
-<a href="https://x.com/binarypilot_ai"><img src="https://github.com/0xIDA/.github/raw/main/imgs/X.png" height="40" alt="Follow on X"></a>
-
-</div>
+<a href="https://x.com/binarypilot_ai"><img src="https://img.shields.io/badge/X-@binarypilot__ai-1DA1F2?style=flat-square" alt="X"></a>
+<a href="https://b0f.ru"><img src="https://img.shields.io/badge/Site-b0f.ru-2b9246?style=flat-square" alt="b0f.ru"></a>
 
 ---
 
-## BinaryPilot Overview
+## What it does
 
-BinaryPilot is an autonomous AI CTF player. Give it a challenge name or URL and it pulls the metadata, starts the instance, solves the challenge with a team of specialized agents, submits the flag back to the platform, and writes a human-readable writeup with the reproduction.
+- You give it a challenge — a name or a URL on HackTheBox or FlagYard.
+- It resolves the challenge, starts its instance, downloads the attachments, and solves it with a tree of specialized agents.
+- Every candidate flag is verified, regex-checked for the platform's format, submitted via the platform API, and recorded.
+- Every accepted flag produces a markdown writeup in `binarypilot_runs/<run>/writeups/`.
 
-**Key Capabilities:**
+## Quick Start
 
-- **Full CTF toolkit** — crypto, pwn, reverse engineering, web, forensics, OSINT, misc
-- **Multi-agent orchestration** — a root coordinator plus deep-specialized solver subagents
-- **Direct platform integration** — HackTheBox and FlagYard APIs (start/stop instance, download files, submit flag)
-- **100+ playbooks** — vendored from community skill packs, per-category recipes with working snippets
-- **Writeup generation** — every accepted flag lands in `binarypilot_runs/<run>/writeups/<challenge>.md`
-
-<br>
-
-<div align="center">
-  <a href="https://github.com/0xIDA/binarypilot">
-    <img src=".github/screenshot.png" alt="BinaryPilot Demo" width="1000" style="border-radius: 16px;">
-  </a>
-</div>
-
-## Use Cases
-
-- **HackTheBox training** — grind challenges end to end against lab instances, with writeups you can re-run by hand
-- **FlagYard training & competitions** — teams or individuals tackling training/competitive labs autonomously
-- **Research automation** — batch-solve categories to compare model strength across crypto/pwn/web/rev
-- **Learning** — watch the agent tree's choices via the live TUI; the playbook it picked is on disk with the writeup
-
-## 🚀 Quick Start
-
-**Prerequisites:**
-- Docker (running)
-- An LLM API key from any [supported provider](https://docs.litellm.ai/docs/providers) (OpenAI, Anthropic, Google, litellm, Ollama, etc.)
-- HTB App Token or FlagYard credentials (or both)
-
-### Installation & First Solve
+**Prerequisites:** Docker (running) and an LLM endpoint.
 
 ```bash
-# One-line install (pipx + PATH + sandbox image + config seed)
+# One-line install
 curl -sSL https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh | bash
 
-# Credentials
-export HTB_TOKEN="eyJhbGc..."                          # HackTheBox App Token
-export FLAGYARD_USERNAME="you" FLAGYARD_PASSWORD="***"  # or FLAGYARD_ACCESS_TOKEN
-
-# LLM
+# Creds
 export BINARYPILOT_LLM="openai/gpt-5.4"
-export LLM_API_KEY="sk-..."
+export LLM_API_KEY="***"
+export HTB_TOKEN="eyJhbGc..."                                # or:
+export FLAGYARD_USERNAME="you" FLAGYARD_PASSWORD="***"
 
-# Solve a challenge
+# Solve
 binarypilot --challenge https://app.hackthebox.com/challenges/15
 binarypilot --challenge "Lame" --platform htb
 binarypilot --challenge "Web 01" --platform flagyard
 ```
 
-> [!NOTE]
-> First run automatically pulls the sandbox Docker image. Results are saved to `binarypilot_runs/<run-name>/`.
+First run pulls the sandbox image (`ghcr.io/0xida/binarypilot-sandbox:1.2.0`). Runs land in `binarypilot_runs/<run>/`.
 
----
+## Categories
 
-## ✨ Features
+- **Crypto** — RSA, block ciphers, classical, ECC, exotic, historical, ZKP, PRNG
+- **Pwn** — stack + heap, ret2*, format strings, kernel + sandbox escapes
+- **Reverse** — anti-analysis, x86/ARM/MIPS, .NET, Java, Python bytecode, WASM, custom VMs, packed
+- **Web** — SQLi, SSTI, XSS, SSRF, IDOR, JWT, deserialization, prototype pollution, Web3
+- **Forensics** — steganography, PCAP, memory, deleted data, signal/hardware captures
+- **OSINT** — geolocation, social, dorking, DNS, wayback
+- **Misc** — Python/Bash jails, esoteric languages, games/VMs, RF/SDR, encoding layers
 
-### Agentic CTF Toolkit
+100+ playbooks vendored in [`binarypilot/skills/ctf/`](binarypilot/skills/README.md).
 
-BinaryPilot agents come equipped with a comprehensive competition toolkit in the sandbox:
-
-- **HTTP Interception Proxy** — full request/response manipulation and analysis with Caido
-- **Browser Exploitation** — automated browser for client-side and auth flow challenges
-- **Shell & Command Execution** — interactive terminal for exploit development and PoC testing
-- **Custom Solver Runtime** — Python sandbox for exploits, decoders, constraint solvers
-- **Reverse Engineering** — radare2, gdb-multiarch, qemu-user-static (no Ghidra/IDA; terminal-only)
-- **Crypto & Constraint Solving** — z3, sympy, pycryptodome, RsaCtfTool-style helpers
-- **Forensics & Stego** — binwalk, foremost, steghide, exiftool, tshark, zsteg, p7zip
-- **Web Exploitation** — nmap, sqlmap, nuclei, ffuf, katana, agent-browser
-- **Pwn Primitives** — pwntools, ropper, ROPgadget, checksec, one_gadget
-
-### Challenge Coverage
-
-BinaryPilot identifies, validates, and solves challenges across the standard CTF categories:
-
-- **Crypto** — RSA attacks, block ciphers, LCG/MT PRNG recovery, padding oracles, classical ciphers, ECC, exotic constructions, historical schemes, ZKP
-- **Pwn / Binary Exploitation** — stack + heap, ROP/ret2libc/format-string, modern glibc heap techniques, kernel + sandbox escapes, advanced primitives
-- **Reverse Engineering** — anti-analysis bypass, x86/ARM/MIPS, .NET, Java, Python bytecode, WASM, custom VMs, packed binaries
-- **Web** — injection (SQLi, SSTI, XXE, NoSQL), auth/JWT attacks, SSRF, IDOR, business logic, prototype pollution, Web3
-- **Forensics** — steganography, PCAP, memory dumps, deleted-file recovery, signal/hardware captures, smartphone/iTunes artifacts
-- **OSINT** — geolocation, social graph, domain/DNS/whois, public records
-- **Misc** — Python/Bash jails, esoteric languages, ML model tampering, RF/SDR, encoding layers
-
-### Multi-Agent Solving
-
-- **Distributed Solving** — specialized agents tackle recon, analysis, exploitation, verification, reporting in parallel
-- **Validation Before Submission** — candidate flags are re-derived by an independent agent before the platform submit call
-- **Structured Writeups** — every accepted flag produces an on-disk markdown writeup with reproduction
-
----
-
-## 🖥️ Local Web Viewer
-
-Every run writes results to disk as it runs. Bring them up in a local dashboard:
-
-```bash
-binarypilot view                # open the most recent run
-binarypilot view my-run-name    # ...or a specific run
-```
-
-The server binds to `127.0.0.1` on a random port and opens a private, tokened link. Nothing leaves your machine. The dashboard shows run status, per-challenge artifacts, the live agent graph, and past runs.
-
----
-
-## Usage Examples
-
-### Basic Usage
-
-```bash
-# Solve a challenge by URL (platform inferred)
-binarypilot --challenge https://app.hackthebox.com/challenges/15
-binarypilot --challenge https://ctf.flagyard.com/labs/12/challenges/34
-
-# Solve by name (platform required)
-binarypilot --challenge "Lame" --platform htb
-binarypilot --challenge "Forensics 101" --platform flagyard
-```
-
-### Advanced Scenarios
-
-```bash
-# Run headlessly in CI or on a server
-binarypilot -n --challenge https://app.hackthebox.com/challenges/15
-
-# Steer the solve with a hint
-binarypilot --challenge "Web 01" --platform flagyard \
-  --instruction "Focus on JWT attacks before other vectors"
-
-# Steer from a file
-binarypilot --challenge "Lame" --platform htb --instruction-file ./instructions.md
-
-# Resume a prior run
-binarypilot --resume <run-name>
-
-# Control intensity
-binarypilot --challenge "Lame" --platform htb --scan-mode quick       # single-agent, first-obvious-vector
-binarypilot --challenge "Lame" --platform htb --scan-mode deep        # default: full tree, heavy parallelism
-
-# Budget + turn caps
-binarypilot --challenge "Web 01" --platform flagyard --max-budget 5.00 --max-turns 400
-```
-
-### Headless Mode
-
-`-n` / `--non-interactive`: prints progress + final report to stdout, no TUI. Exits non-zero on failure or when the flag was unaccepted. Designed for batch jobs and CI.
-
-### CI/CD (GitHub Actions)
-
-```yaml
-name: binarypilot-ctf-check
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  ctf-regression:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install BinaryPilot
-        run: pipx install binarypilot-agent
-      - name: Solve a smoke challenge
-        env:
-          BINARYPILOT_LLM: ${{ secrets.BINARYPILOT_LLM }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          HTB_TOKEN: ${{ secrets.HTB_TOKEN }}
-        run: binarypilot -n --challenge https://app.hackthebox.com/challenges/15
-```
-
-### Configuration
+## Configuration
 
 ```bash
 # LLM
-export BINARYPILOT_LLM="openai/gpt-5.4"         # or anthropic/*, litellm/*, ollama/* via LLM_API_BASE
+export BINARYPILOT_LLM="openai/gpt-5.4"     # litellm-compatible, any provider
 export LLM_API_KEY="sk-..."
-export LLM_API_BASE="your-api-base-url"          # local models (Ollama, LMStudio)
-export LLM_REASONING_EFFORT="high"               # default high; quick mode: medium
+export LLM_API_BASE="http://localhost:11434" # local (Ollama, LMStudio)
 
 # Platforms
-export HTB_TOKEN="eyJhbGc..."                    # HackTheBox App Token
-export FLAGYARD_USERNAME="you" FLAGYARD_PASSWORD="***"   # or FLAGYARD_ACCESS_TOKEN
-export FLAGYARD_API_BASE="https://api.flagyard.com/api"
+export HTB_TOKEN="***"                       # HackTheBox App Token
+export FLAGYARD_USERNAME="you"
+export FLAGYARD_PASSWORD="***"               # or FLAGYARD_ACCESS_TOKEN
 
-# Sandbox image (default is fine)
+# Sandbox image (default fine)
 export BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.2.0"
-
-# Optional
-export PERPLEXITY_API_KEY="..."                  # web_search tool
 ```
 
-> [!NOTE]
-> BinaryPilot automatically saves your configuration to `~/.binarypilot/cli-config.json`, so you don't have to re-enter it on every run.
+Or persist in `~/.binarypilot/cli-config.json`.
 
-#### Sign in with a ChatGPT subscription
-
-Instead of a metered API key, run BinaryPilot on your ChatGPT Plus/Pro subscription:
+## Usage Examples
 
 ```bash
-binarypilot auth login chatgpt
-export BINARYPILOT_LLM="chatgpt/gpt-5.4"
+# CTF by URL (platform auto-detected)
 binarypilot --challenge https://app.hackthebox.com/challenges/15
+binarypilot --challenge https://ctf.flagyard.com/labs/12/challenges/34
 
-binarypilot auth status
-binarypilot auth logout
+# By name (platform required)
+binarypilot --challenge "Lame" --platform htb
+binarypilot --challenge "Web 01" --platform flagyard
+
+# Headless/silent (CI or servers)
+binarypilot -n --challenge ...
+
+# Steer with a hint
+binarypilot --challenge "Lame" --platform htb --instruction "Focus on ret2libc, not shellcode"
+
+# Resume a previous run
+binarypilot --resume 2026-08-03-lame
+
+# Budget + turn caps
+binarypilot --challenge "Web 01" --platform flagyard --max-budget 5.00 --max-turns 400
+
+# Open local viewer of the last run
+binarypilot view
+
+# Existing pentest-mode compatibility
+binarypilot --target https://your-app.com
 ```
 
-**Recommended models for best results:**
+## CLI (subset)
 
-- [OpenAI GPT-5.4](https://openai.com/api/) — `openai/gpt-5.4`
-- [Anthropic Claude Sonnet 4.6](https://claude.com/platform/api) — `anthropic/claude-sonnet-4-6`
-- [Google Gemini 3 Pro Preview](https://cloud.google.com/vertex-ai) — `vertex_ai/gemini-3-pro-preview`
+```
+--challenge NAME_OR_URL         challenge name or full URL
+--platform {flagyard,htb}      required when --challenge is a name
+--instruction "text"           steering hint
+--instruction-file PATH        steering from a file
+-m {quick,standard,deep}       solve intensity
+-n                             headless
+--resume RUN_NAME              resume a prior run
+--max-turns N                  per-agent turn cap (default 500)
+--max-budget USD               LLM cost cap
+-v, --version                  version
+```
 
-See the [LiteLLM providers docs](https://docs.litellm.ai/docs/providers) for all supported providers, including Vertex AI, Bedrock, Azure, and local models.
+See [`docs/cli.md`](docs/cli.md) for the full flag reference.
 
-## Enterprise CTF Solving
+## Docs
 
-Get the same BinaryPilot experience with [enterprise-grade](https://github.com/0xIDA) controls: SSO (SAML/OIDC), custom compliance-ready writeups, dedicated support & SLA, custom deployment options (VPC/self-hosted), BYOK model support, and tailored solving agents optimized for your environment. [Contact us](https://github.com/0xIDA).
+- [`docs/usage.md`](docs/usage.md) — everyday flows
+- [`docs/cli.md`](docs/cli.md) — complete flag reference + URL shapes
+- [`docs/platforms.md`](docs/platforms.md) — per-platform auth env + endpoints
+- [`docs/architecture.md`](docs/architecture.md) — agent tree, prompt wiring, skills, debug-by-symptom
+- [`docs/llm-providers.md`](docs/llm-providers.md) — LLM config per provider
+- [`docs/advanced.md`](docs/advanced.md) — budget/turns, sandbox tuning, resume rules
+- [`docs/integrations.md`](docs/integrations.md) — CI, viewer, Caido, HTB VPN
+- [`docs/docker.md`](docs/docker.md) — sandbox contents + build
+- [`docs/contributing.md`](docs/contributing.md) — dev setup + commit style + skill writing
 
-## Documentation
+## License
 
-Full documentation lives in [`docs/`](docs/README.md):
-
-- [`docs/cli.md`](docs/cli.md) — complete flag reference + URL shapes per platform
-- [`docs/platforms.md`](docs/platforms.md) — HackTheBox and FlagYard setup, endpoint maps, flag discipline
-- [`docs/architecture.md`](docs/architecture.md) — agent tree, prompt wiring, skills layout, debug-by-symptom table
-- [`docs/docker.md`](docs/docker.md) — sandbox contents, build, publish
-- [`binarypilot/skills/README.md`](binarypilot/skills/README.md) — skill categories + how to add one
-
-## Contributing
-
-We welcome contributions of code, docs, and new skills — check out our [Contributing Guide](docs/contributing.md) to get started, or open a [pull request](https://github.com/0xIDA/binarypilot/pulls)/[issue](https://github.com/0xIDA/binarypilot/issues).
-
-## Join Our Community
-
-Have questions? Found a bug? Want to contribute? **[Join our Discord!](https://discord.gg/binarypilot)**
-
-## Support the Project
-
-**Love BinaryPilot?** Give us a ⭐ on GitHub!
-
-## Acknowledgements
-
-BinaryPilot builds on the incredible work of open-source projects like [LiteLLM](https://github.com/BerriAI/litellm), [Caido](https://github.com/caido/caido), [Nuclei](https://github.com/projectdiscovery/nuclei), [Playwright](https://github.com/microsoft/playwright), [Textual](https://github.com/Textualize/textual), and the CTF community skill packs vendored into `binarypilot/skills/ctf/`. Huge thanks to their maintainers.
+Apache-2.0. See [`LICENSE`](LICENSE).
 
 > [!WARNING]
-> Only run BinaryPilot on challenges you own or have permission to solve. You are responsible for complying with each platform's rules of engagement.
-
-</div>
+> Run against challenges you own or have permission to solve. You are responsible for complying with each platform's rules of engagement.

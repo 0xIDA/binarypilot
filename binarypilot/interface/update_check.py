@@ -386,7 +386,9 @@ def self_update(console: Console | None = None, version: str | None = None) -> b
         console.print(f"[bold red]Update failed:[/] {e}")
         console.print(
             "[dim]You can reinstall manually with:[/] "
-            "[#60a5fa]curl -sSL https://binarypilot.ai/install | bash[/]"
+            "[#60a5fa]curl -sSL "
+            "https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh "
+            "| bash[/]"
         )
         return False
 

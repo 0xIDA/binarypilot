@@ -949,9 +949,8 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
     console.print(panel)
     console.print()
     console.print(
-        "[#60a5fa]binarypilot.ai[/]  [dim]·[/]  "
-        "[#60a5fa]docs.binarypilot.ai[/]  [dim]·[/]  "
-        "[#60a5fa]discord.gg/binarypilot-ai[/]"
+        "[#60a5fa]b0f.ru[/]  [dim]·[/]  "
+        "[#60a5fa]github.com/0xIDA/binarypilot[/]"
     )
     console.print()
     if not args.non_interactive:

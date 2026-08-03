@@ -112,12 +112,12 @@ class SplashScreen(Static):  # type: ignore[misc]
     ALLOW_SELECT = False
     PRIMARY_GREEN = "#22c55e"
     BANNER = (
-        " ███████╗████████╗██████╗ ██╗██╗  ██╗\n"
-        " ██╔════╝╚══██╔══╝██╔══██╗██║╚██╗██╔╝\n"
-        " ███████╗   ██║   ██████╔╝██║ ╚███╔╝\n"
-        " ╚════██║   ██║   ██╔══██╗██║ ██╔██╗\n"
-        " ███████║   ██║   ██║  ██║██║██╔╝ ██╗\n"
-        " ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝"
+        " ██████╗ ██╗███╗   ██╗ █████╗ ██████╗ ██╗   ██╗██████╗ ██╗██╗      ██████╗ ████████╗\n"
+        " ██╔══██╗██║████╗  ██║██╔══██╗██╔══██╗╚██╗ ██╔╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝\n"
+        " ██████╔╝██║██╔██╗ ██║███████║██████╔╝ ╚████╔╝ ██████╔╝██║██║     ██║   ██║   ██║\n"
+        " ██╔══██╗██║██║╚██╗██║██╔══██║██╔══██╗  ╚██╔╝  ██╔═══╝ ██║██║     ██║   ██║   ██║\n"
+        " ██████╔╝██║██║ ╚████║██║  ██║██║  ██║   ██║   ██║     ██║███████╗╚██████╔╝   ██║\n"
+        " ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝"
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -188,13 +188,13 @@ class SplashScreen(Static):  # type: ignore[misc]
         text = Text("⚠ ", style=Style(color="yellow", bold=True))
         text.append(model, style=Style(color="cyan", bold=True))
         text.append(
-            " is not a recommended frontier model - pentest quality could be degraded",
+            " is not a recommended frontier model - solve quality could be degraded",
             style=Style(color="yellow"),
         )
         return text
 
     def _build_url_text(self) -> Text:
-        return Text("binarypilot.ai", style=Style(color=self.PRIMARY_GREEN, bold=True))
+        return Text("b0f.ru", style=Style(color=self.PRIMARY_GREEN, bold=True))
 
     def _build_welcome_text(self) -> Text:
         text = Text("Welcome to ", style=Style(color="white", bold=True))
@@ -206,7 +206,10 @@ class SplashScreen(Static):  # type: ignore[misc]
         return Text(f"v{self._version}", style=Style(color="white", dim=True))
 
     def _build_tagline_text(self) -> Text:
-        return Text("Open-source AI hackers for your apps", style=Style(color="white", dim=True))
+        return Text(
+            "Autonomous CTF solver — HackTheBox + FlagYard",
+            style=Style(color="white", dim=True),
+        )
 
     def _build_start_line_text(self, phase: int) -> Text:
         full_text = "Starting BinaryPilot Agent"
