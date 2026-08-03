@@ -185,9 +185,26 @@ def flagyard_get_challenge(ctx: RunContextWrapper, lab_id: int, challenge_id: st
 def flagyard_start_instance(
     ctx: RunContextWrapper, lab_id: int, challenge_id: str, wait_seconds: int = 15
 ) -> str:
-    """Start a FlagYard challenge instance; polls briefly for instanceAddress."""
+    """Start a FlagYard challenge instance; polls briefly for instanceAddress.
+
+    One retry on 4xx/5xx from the start call — the platform returns a generic
+    'technical error' message on transient failures and usually clears on retry.
+    """
     c = client()
-    start = c.request("POST", f"/labs/{lab_id}/challenges/{challenge_id}/instance", json_body={})
+    start = None
+    for attempt in range(2):
+        start = c.request(
+            "POST", f"/labs/{lab_id}/challenges/{challenge_id}/instance", json_body={}
+        )
+        ok = not (
+            isinstance(start, dict)
+            and start.get("isSuccess") is False
+            and int(start.get("status_code", 0)) >= 400
+        )
+        if ok:
+            break
+        if attempt == 0:
+            time.sleep(2)
     instance = None
     deadline = time.time() + max(0, wait_seconds)
     while True:
@@ -220,9 +237,15 @@ def flagyard_download_files(
     ctx: RunContextWrapper,
     lab_id: int,
     challenge_id: str,
-    output_dir: str = "/workspace/challenge-files",
+    output_dir: str = "/tmp/challenge-files",  # noqa: S108 - sandbox-scoped scratch dir, run-isolated
 ) -> str:
-    """Download FlagYard challenge attachments to output_dir inside the sandbox."""
+    """Download FlagYard challenge attachments to output_dir inside the sandbox.
+
+    Defaults to /tmp (always writable) — /workspace's bind-mount + chown dance can
+    collide with host-UID remapping and EACCES on some hosts. The agent can copy
+    to /workspace afterward via exec_command if it wants the artifacts persisted
+    in the run's shared workspace.
+    """
     c = client()
     meta = c.request("GET", f"/labs/{lab_id}/challenges/{challenge_id}/challenge-files")
     if not isinstance(meta, dict) or meta.get("isSuccess") is False:

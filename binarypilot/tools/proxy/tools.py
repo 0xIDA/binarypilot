@@ -356,7 +356,7 @@ async def repeat_request(
 ) -> str:
     """Repeat a captured request, optionally patching individual fields.
 
-    The standard pentesting workflow with this tool:
+    The standard CTF-web workflow with this tool:
 
     1. ``agent-browser`` (via ``exec_command``) or live target traffic
        → request gets captured by Caido.
@@ -365,7 +365,7 @@ async def repeat_request(
        payload injection, parameter tampering).
 
     Mirrors the manual "browse → capture → modify → test" flow used in
-    real pentesting. Inherits everything from the original request
+    real exploitation. Inherits everything from the original request
     (headers, cookies, auth, method, URL) and overlays only the fields
     you specify in ``modifications``.
 

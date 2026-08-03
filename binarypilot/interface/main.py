@@ -509,11 +509,19 @@ def _positive_int(value: str) -> int:
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="BinaryPilot Multi-Agent Cybersecurity Penetration Testing Tool",
+        description="BinaryPilot — Autonomous CTF Solver (HackTheBox + FlagYard)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Web application penetration test
+  # Solve a CTF challenge by URL
+  binarypilot --challenge https://app.hackthebox.com/challenges/15
+  binarypilot --challenge https://ctf.flagyard.com/labs/12/challenges/34
+
+  # Solve by name (platform required)
+  binarypilot --challenge "Lame" --platform htb
+  binarypilot --challenge "Web 01" --platform flagyard
+
+  # Web application pentest (legacy strix flow)
   binarypilot --target https://example.com
 
   # GitHub repository analysis
@@ -523,10 +531,10 @@ Examples:
   # Local code analysis
   binarypilot --target ./my-project
 
-  # Domain penetration test
+  # Domain pentest (legacy)
   binarypilot --target example.com
 
-  # IP address penetration test
+  # IP pentest (legacy)
   binarypilot --target 192.168.1.42
 
   # Multiple targets (e.g., white-box testing with source and deployed app)
@@ -581,7 +589,7 @@ Examples:
     parser.add_argument(
         "--instruction",
         type=str,
-        help="Custom instructions for the penetration test. This can be "
+        help="Custom instructions for the challenge solve or pentest. This can be "
         "specific vulnerability types to focus on (e.g., 'Focus on IDOR and XSS'), "
         "testing approaches (e.g., 'Perform thorough authentication testing'), "
         "test credentials (e.g., 'Use the following credentials to access the app: "
@@ -592,7 +600,7 @@ Examples:
     parser.add_argument(
         "--instruction-file",
         type=str,
-        help="Path to a file containing detailed custom instructions for the penetration test. "
+        help="Path to a file containing detailed custom instructions for the run. "
         "Use this option when you have lengthy or complex instructions saved in a file "
         "(e.g., '--instruction-file ./detailed_instructions.txt').",
     )

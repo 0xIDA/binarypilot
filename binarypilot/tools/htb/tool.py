@@ -125,9 +125,15 @@ def htb_stop_challenge_container(ctx: RunContextWrapper, challenge_id: int) -> s
 
 @function_tool
 def htb_download_challenge(
-    ctx: RunContextWrapper, challenge_id: int, output_dir: str = "/workspace/challenge-files"
+    ctx: RunContextWrapper,
+    challenge_id: int,
+    output_dir: str = "/tmp/challenge-files",  # noqa: S108
 ) -> str:
-    """Download a HackTheBox challenge zip into output_dir inside the sandbox."""
+    """Download a HackTheBox challenge zip into output_dir inside the sandbox.
+
+    /tmp default for the same remapped-UID reason as flagyard_download_files; the
+    agent can relocate afterwards.
+    """
     c = client()
     meta = c.request("GET", f"/challenges/{challenge_id}/download_link")
     url = meta.get("url") if isinstance(meta, dict) else None
