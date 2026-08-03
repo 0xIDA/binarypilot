@@ -10,9 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
 from agents import RunContextWrapper, function_tool
@@ -233,44 +231,35 @@ def flagyard_stop_instance(ctx: RunContextWrapper, lab_id: int, challenge_id: st
 
 
 @function_tool
-def flagyard_download_files(
-    ctx: RunContextWrapper,
-    lab_id: int,
-    challenge_id: str,
-    output_dir: str = "/tmp/challenge-files",  # noqa: S108 - sandbox-scoped scratch dir, run-isolated
-) -> str:
-    """Download FlagYard challenge attachments to output_dir inside the sandbox.
+def flagyard_download_files(ctx: RunContextWrapper, lab_id: int, challenge_id: str) -> str:
+    """Return signed download URLs for a FlagYard challenge's attachments.
 
-    Defaults to /tmp (always writable) — /workspace's bind-mount + chown dance can
-    collide with host-UID remapping and EACCES on some hosts. The agent can copy
-    to /workspace afterward via exec_command if it wants the artifacts persisted
-    in the run's shared workspace.
+    Function tools run on the HOST, not inside the sandbox — writing bytes here
+    puts files in the host's /tmp, invisible to the sandbox container's shell.
+    So this tool intentionally returns URLs; the agent fetches them inside the
+    sandbox with `exec_command`:  curl -fsSL '<url>' -o /workspace/...
     """
     c = client()
     meta = c.request("GET", f"/labs/{lab_id}/challenges/{challenge_id}/challenge-files")
     if not isinstance(meta, dict) or meta.get("isSuccess") is False:
         return _json(meta)
     files = ((meta.get("data") or {}).get("files")) or []
-    out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    saved = []
-    for f in files:
-        url = f.get("url")
-        name = f.get("fileName") or f.get("name")
-        if not name and url:
-            disp = parse_qs(urlparse(url).query).get("response-content-disposition", [""])[0]
-            if "filename=" in disp:
-                name = unquote(disp.split("filename=")[-1].strip().strip('"'))
-        if not name:
-            name = f"file_{len(saved) + 1}.bin"
-        try:
-            r = c.session.get(url, timeout=120)
-            path = out / Path(name).name
-            path.write_bytes(r.content)
-            saved.append({"file": name, "path": str(path), "size": len(r.content)})
-        except (OSError, requests.RequestException) as e:
-            saved.append({"file": name, "error": str(e)})
-    return _json({"isSuccess": True, "files": saved})
+    return _json(
+        {
+            "isSuccess": True,
+            "files": [
+                {
+                    "file": f.get("fileName") or f.get("name") or f"file_{i}",
+                    "url": f.get("url"),
+                }
+                for i, f in enumerate(files)
+            ],
+            "hint": (
+                "exec_command: mkdir -p /workspace/challenge-files/<slug> "
+                "&& curl -fsSL '<url>' -o /workspace/challenge-files/<slug>/<file>"
+            ),
+        }
+    )
 
 
 @function_tool

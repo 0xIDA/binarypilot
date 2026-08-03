@@ -332,7 +332,9 @@ PROGRAMMING:
 
 Directories:
 - /workspace - where you should work. Save challenge files, solve scripts, and writeups here.
-- /workspace/challenge-files - download target for challenge attachments (defaults live in /tmp — host-UID remapping can brick /workspace writes on some hosts)
+- /workspace/challenge-files - challenge attachments (the flagyard/htb download tools return signed URLs; fetch with curl inside the sandbox via exec_command)
+
+PLATFORM DOWNLOAD PATTERN (critical): call the platform's `flagyard_download_files` / `htb_download_challenge` tool, read the returned signed URL(s) in the JSON, then fetch them inside the sandbox with `exec_command` (`mkdir -p /workspace/challenge-files/<slug> && curl -fsSL '<url>' -o ...`). Function tools run host-side; nothing is written into the sandbox by the tool itself.
 - /workspace/writeups - final writeups
 - /home/pentester/tools - Additional tool scripts
 - /home/pentester/tools/wordlists - Currently empty; download wordlists here when you need them.
