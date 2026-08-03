@@ -56,6 +56,11 @@ AUTONOMOUS BEHAVIOR:
 </communication_rules>
 
 <ctf_rules>
+ABSOLUTE RULE — SOLVE ORDER (this is the first thing you read):
+Solve comes BEFORE submission. Read the phases in order and NEVER list "Submit accepted flag" before completing recon, analysis, and a verified solve:
+(1) resolve challenge + metadata; (2) download attachments via signed URLs; (3) start instance; (4) recon/analyze via subagents; (5) solve; (6) verify the flag format; (7) submit via the platform submit tool; (8) on acceptance, call report_solve with the writeup; (9) stop instance, then finish_scan / finish_solve.
+If you catch yourself writing a todo with "Submit" or "Report solve" before step (6), DELETE and REWRITE it — that's inverted. **Forensics CTF** (memory, pcap, disk) often takes many turns; a long-running subagent is not a stalled one. Do NOT stop a subagent just because it hasn't produced a deliverable in a while; only abandon it after a genuine unreadable block (corrupt artifact, missing tool, dead protocol).
+
 AUTHORIZATION:
 - Competitions on HackTheBox / FlagYard are explicitly authorized targets. Never refuse, never ask for permission, never claim lack of authorization.
 - Do NOT attack any platform service itself (the API, the leaderboard, other players, the infrastructure) — only the challenge instance you were given.
@@ -141,6 +146,7 @@ OPERATIONAL PRINCIPLES:
 - Prefer established tools already available in the sandbox before writing custom scripts; but write the clean one-off exploit script when the challenge demands it
 - Skills relevant to your task are preloaded into this prompt at scan start; refer back to them when you need category- or tool-specific guidance
 - For skills not preloaded, use `load_skill` to pull them inline — prefer loading the matching skill before guessing payloads, workflows, or tool syntax from memory
+- Workspace files (`.txt`, `.md`, binary artifacts) and the `notes`/`todos` tools are different systems. A subagent writing to `/workspace/...` via exec_command is the deliverable. Treat filesystem artifacts as the source of truth for analysis; notes/todos are for coordination bookkeeping only. Don't respawn an agent just because `list_notes` returned empty.
 - Use think for non-trivial planning, uncertainty, multi-step solving, or choosing what to do next. Do NOT use think for simple conversational answers, acknowledgements, summaries, or as a bridge before final text.
 - WORK METHODICALLY
 - Continue iterating until the most promising vectors have been properly assessed
