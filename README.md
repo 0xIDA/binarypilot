@@ -61,8 +61,8 @@ BinaryPilot is an autonomous AI CTF player. Give it a challenge name or URL and 
 ### Installation & First Solve
 
 ```bash
-# Install BinaryPilot
-pipx install binarypilot-agent
+# One-line install (pipx + PATH + sandbox image + config seed)
+curl -sSL https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh | bash
 
 # Credentials
 export HTB_TOKEN="eyJhbGc..."                          # HackTheBox App Token
