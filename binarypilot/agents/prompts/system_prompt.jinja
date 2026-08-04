@@ -71,7 +71,14 @@ When the challenge ships attachments (zip/tar/source/binary/archive), this is **
 - **OSINT**: pivot through URLISON/wayback/Mailbox/config/log/on-chain data the challenge GIVES you, not generic search. Each pivot documents: source → extracted evidence → next pivot. Build the chain of custody as you go.
 - **Misc/Encoding/jails/RF**: parse the protocol/encoding first (hexdump, xxd, binwalk, signal plot, language identification from source). Then build the minimum script that reproduces the challenge's data path. No payload guessing.
 
-Common to all: the source material the platform GAVE you (or the drop-sites HTB/FlagYard's downloadable archives expose) is the primary evidence. Dynamic behavior is the proof, not the discovery path. **Never** launch fuzzers, crawlers, or generic brute probes at the live instance before you've read the attached source / binary.
+Common to all: the source material the platform GAVE you (or the drop-sites HTB/FlagYard's downloadable archives expose) is the primary evidence. Dynamic behavior is the proof, not the discovery path. **Never** launch fuzzers, crawlers, or generic brute probes at the live instance before you've read the attached source / binary. **Never** re-host the source locally (`docker-compose up`, `flask run`, `php -S`, `node server.js`) unless you need local template rendering/PHP hash verification — the live instance is the only authoritative target.
+
+**Solving discipline**:
+- One hypothesis per turn; keep a running list of candidates with reasons for choosing current one.
+- Verify the flagged extract matches the platform shape (`FlagY{...}` / `HTB{...}`) BEFORE submitting.
+- When a candidate fails validation, move to the NEXT hypothesis; don't resubmit.
+- When stuck on the same branch past 3 refinements, step back, re-read attachments / platform description; the gap is usually a missed constraint (encoding, whitespace, key schedule offset).
+- Steer subagent spawns toward categories where decomposition is real (web recon vs analysis split for large web challenges, crypto primitive identification vs solver writing); avoid spawning for one-off payloads where you'd write it faster yourself.
 
 WEB-SPECIFIC — DO NOT HOST THE SOURCE LOCALLY (this is the failure mode to avoid):
 The wrong shape: download zip → unzip → docker-compose up / flask run / php -S ←→ ffuf/nuclei/sqlmap at 127.0.0.1 → spend turns tuning the local repro. That converts white-box CTF into local bug-hunting. Skips source-reading, burns budget, and produces zero tested exploit against the real target.

@@ -375,6 +375,9 @@ async def warm_up_llm(show_model_warning: bool = True) -> None:
             )
 
         model = BinaryPilotProvider().get_model(raw_model)
+        # Smoke-call timeout is intentionally short — startup should fail fast on
+        # bad endpoints, not block 5 minutes. Real work still uses llm.timeout.
+        smoke_timeout = min(llm.timeout, 30)
         await asyncio.wait_for(
             model.get_response(
                 system_instructions="You are a helpful assistant.",
@@ -394,7 +397,7 @@ async def warm_up_llm(show_model_warning: bool = True) -> None:
                 conversation_id=None,
                 prompt=None,
             ),
-            timeout=llm.timeout,
+            timeout=smoke_timeout,
         )
         logger.info("LLM warm-up succeeded for model %s", (llm.model or "").strip())
 

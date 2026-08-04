@@ -219,7 +219,7 @@ def _session_items_payload(items: list[Any]) -> list[dict[str, Any]]:
     return payload
 
 
-_WAIT_DEFAULT_TIMEOUT_S = 300
+_WAIT_DEFAULT_TIMEOUT_S = 120  # was 300 — wake parents sooner when subagents park
 # Enforced by the SDK around the whole tool call, so it caps an oversized
 # ``timeout_seconds`` the model asks for. One second of headroom lets the
 # tool's own timeout fire first and return a clean result.
