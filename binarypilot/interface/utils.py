@@ -351,11 +351,17 @@ def build_final_stats_text(report_state: Any) -> Text:
     if not report_state:
         return stats_text
 
-    is_ctf = bool(getattr(report_state, "solves", None)) or any(
-        t.get("type") == "ctf_challenge"
-        for t in (getattr(report_state, "run_record", {}) or {})
-        .get("inputs", {})
-        .get("targets", [])
+    import os
+
+    is_ctf = (
+        bool(getattr(report_state, "solves", None))
+        or os.environ.get("BINARYPILOT_PLATFORM") in ("htb", "flagyard")
+        or any(
+            t.get("type") == "ctf_challenge"
+            for t in (getattr(report_state, "run_record", {}) or {})
+            .get("inputs", {})
+            .get("targets", [])
+        )
     )
 
     if is_ctf:

@@ -756,7 +756,7 @@ Examples:
     if args.challenge and args.resume:
         parser.error("Cannot combine --challenge with --resume.")
 
-    else:
+    if not args.resume:
         if not args.target and not args.target_list and not args.challenge:
             parser.error(
                 "the following arguments are required: -t/--target or --target-list "
