@@ -36,6 +36,10 @@ RUN apt-get update && \
         socat \
         ruby-full \
     && gem install --no-document zsteg one_gadget \
+    && apt-get install -y --no-install-recommends wordlists seclists \
+    && gunzip -c /usr/share/wordlists/rockyou.txt.gz > /usr/share/wordlists/rockyou.txt 2>/dev/null \
+        || curl -fsSL https://github.com/brannondorsey/naive-hashcat/raw/master/rockyou.txt -o /usr/share/wordlists/rockyou.txt \
+    && chmod 0644 /usr/share/wordlists/rockyou.txt \
     && apt-get autoremove -y \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
