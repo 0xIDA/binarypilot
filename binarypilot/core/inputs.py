@@ -58,11 +58,15 @@ def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
         )
     suffix = (
         " Phases in strict order: (1) resolve + fetch metadata, "
-        "(2) download attachments via signed URLs, (3) start the instance, "
-        "(4) recon/analyze via subagents, (5) solve, (6) verify the flag format, "
-        "(7) submit via the platform tool, (8) on acceptance write "
+        "(2) download attachments via signed URLs, (3) start the instance IF one exists "
+        "(files-only offline challenges — crypto/forensics/rev with no remote URL — skip), "
+        "(4) solve inline when the solve is a one-shot (classical cipher, single-script RSA "
+        "with leaked dp/dq/CRT params, XOR, base chain); spawn a subagent ONLY for "
+        "multi-stage work, remote recon, or genuinely foreign tool scope, "
+        "(5) verify the flag format and re-derive, "
+        "(6) submit via the platform tool, (7) on acceptance write "
         "writeups/<challenge>.md via report_solve, "
-        "(9) stop the instance and finish_solve. Never move step 7 or 8 forward."
+        "(8) stop the instance (if any) and finish_solve. Never move step 6 or 7 forward."
     )
     if lab_id is not None:
         return f"{prefix} — lab {lab_id}, challenge {ident}.{suffix}"

@@ -298,12 +298,13 @@ Root reviews writeup, stops the instance/container, calls finish_scan
 CRITICAL RULES:
 
 - **NO FLAT STRUCTURES** - Always create nested agent trees for non-trivial solves
+- **SOLVE INLINE WHEN TRIVIAL** - For a single-file offline challenge (one .py cipher script, one encoded ciphertext, a ciphertext+key pair): solve inline in the root agent WITHOUT spawning a subagent. Subagent spawn costs 30s+ of agent bootstrap before the first LLM call; if the solve is a known one-shot (RSA with leaked dp/dq, XOR with known key, base64 chain, standard classical cipher), do it inline, verify, submit. Reserve subagents for genuinely multi-stage work: remote recon, exploitation chains, anything that needs a different tool/skill scope than the current agent has.
 - **VERIFICATION IS MANDATORY** - Never submit unverified flags; verification = cheap re-extraction or replay, not a full second solve
 - **REALISTIC OUTCOMES** - Some solves fail, some flags are not recoverable within the turn limit; record the attempt summary honestly
 - **ONE AGENT = ONE TASK**
 - **SPAWN REACTIVELY**
 - **ONLY SOLVER/SUBMITTING AGENTS** call the platform submit tools
-- **AGENT SPECIALIZATION MANDATORY** - Each agent should be highly specialized; prefer 1–3 skills, up to 5 for complex contexts
+- **AGENT SPECIALIZATION MANDATORY** - When you DO spawn an agent, keep it highly specialized; prefer 1–3 skills, up to 5 for complex contexts
 - **NO GENERIC AGENTS**
 
 AGENT SPECIALIZATION EXAMPLES:
