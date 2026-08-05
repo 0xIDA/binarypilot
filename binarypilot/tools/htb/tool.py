@@ -178,3 +178,33 @@ def htb_submit_machine_flag(ctx: RunContextWrapper, machine_id: int, flag: str) 
             "POST", "/machine/own", json_body={"id": machine_id, "flag": flag}, v5=True
         )
     )
+
+
+@function_tool
+def htb_get_machine_info(ctx: RunContextWrapper, machine_id: int) -> str:
+    """Get an HTB machine profile: name, OS, difficulty, active 10.x IP if spawned."""
+    return _json(client().request("GET", f"/machine/profile/{machine_id}"))
+
+
+@function_tool
+def htb_spawn_machine(ctx: RunContextWrapper, machine_id: int, wait_seconds: int = 30) -> str:
+    """Spawn an HTB machine; polls for the assigned 10.x IP.
+
+    Use BEFORE touching the target — HTB machines are not pre-running. Machines
+    are only reachable over the VPN (BINARYPILOT_VPN_PROFILE profile must match
+    the machine's VPN product: machines / starting-point / sherlocks / fortresses
+    / seasonal).
+    """
+    c = client()
+    start = c.request("POST", "/vm/spawn", json_body={"machine_id": machine_id}, v5=True)
+    info: Any = None
+    deadline = time.time() + max(0, wait_seconds)
+    while True:
+        info = c.request("GET", f"/machine/profile/{machine_id}")
+        ip = (info.get("info") or {}).get("ip") if isinstance(info, dict) else None
+        if ip:
+            break
+        if time.time() >= deadline:
+            break
+        time.sleep(2)
+    return _json({"spawn_result": start, "machine": (info or {}).get("info")})

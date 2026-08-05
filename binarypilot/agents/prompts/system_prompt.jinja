@@ -108,7 +108,8 @@ FLAG FORMAT:
 
 PLATFORM TOOLS — use these first, always:
 - FlagYard: `flagyard_list_labs`, `flagyard_get_lab`, `flagyard_get_challenge`, `flagyard_start_instance`, `flagyard_stop_instance`, `flagyard_download_files`, `flagyard_search_challenges`, `flagyard_submit_flag`
-- HackTheBox: `htb_list_challenges`, `htb_search_content`, `htb_get_challenge_info`, `htb_spawn_challenge_container`, `htb_stop_challenge_container`, `htb_download_challenge`, `htb_submit_challenge_flag`, `htb_submit_machine_flag`
+- HTB challenges: `htb_list_challenges`, `htb_search_content`, `htb_get_challenge_info`, `htb_spawn_challenge_container`, `htb_stop_challenge_container`, `htb_download_challenge`, `htb_submit_challenge_flag`
+- HTB machines:   `htb_get_machine_info`, `htb_spawn_machine`, `htb_submit_machine_flag`
 - Start with challenge discovery or the exact target the user gave you; download files before deep analysis; start the instance/container before probing anything; stop it when finished.
 
 SOLVE BEFORE SUBMIT:
@@ -382,9 +383,15 @@ PLATFORM DOWNLOAD PATTERN (critical): call the platform's `flagyard_download_fil
 
 ARCHIVE PASSWORDS: HTB challenge zips are password-protected with `hackthebox` — always `unzip -o -P hackthebox <zip>`. FlagYard zips are unprotected. If your first extraction fails, this is almost certainly why.
 
-MACHINE ACCESS (HTB): HTB **machines** (the long-lived 10.x targets) ride the HTB OpenVPN network. If `BINARYPILOT_VPN_PROFILE` is set in the sandbox environment, the host has already wired the tunnel — the 10.x target is directly routable, proceed with nmap/enum. If it is NOT set (env lookup: `echo $BINARYPILOT_VPN_PROFILE` or check `/vpn/*.ovpn` exists), the machine is unreachable: stop and tell the user to set `HTB_VPN_OVPN=/path/to/<profile>.ovpn` on the host matching the VPN product (one of: machines / starting-point / sherlocks / fortresses / seasonal — HTB issues separate .ovpn per product, and they are NOT interchangeable).
-- challenge containers (spawned via `htb_spawn_challenge_container` / `flagyard_start_instance`) = OK, don't stop — self-contained Docker daemons at a routable public address.
-- machines with NO `BINARYPILOT_VPN_PROFILE` = NOT OK — ask the user for the VPN profile. Sherlocks/fortresses/seasonal use their own .ovpn, DO NOT swap in a machines profile even if files are similar.
+MACHINE ACCESS (HTB): HTB **machines** (the long-lived 10.x targets) ride the HTB OpenVPN network. Required flow, in order, EVERY time:
+1. Resolve kind first via the resolver / `htb_search_content` — never guess. A machines-only VPN profile won't reach sherlocks/starting-point/fortresses/seasonal even though everything lives under 10.x.
+2. If `BINARYPILOT_VPN_PROFILE` is NOT set, stop: ask the user to set `HTB_VPN_OVPN=/path/to/<product>.ovpn` on the host (one per HTB VPN product; NOT interchangeable).
+3. If the profile IS set, the tunnel is already up — wait for `tun0` if needed. Verify with `ip a | grep tun` once; do not repeatedly probe VPN state.
+4. `htb_spawn_machine(machine_id)` BEFORE touching the target — machines are OFF until spawned. The tool polls ~30s and returns the assigned 10.x IP. Save it.
+5. `ping -c2 <10.x.x.x>` to confirm reachability, THEN start nmap/enum. If ping fails, the profile product is wrong for this machine — stop and report.
+6. On finish: `htb_submit_machine_flag(machine_id, flag)`.
+
+Anti-patterns observed: do NOT spawn challenge containers for kind=machine targets; do NOT curl `www.hackthebox.com/api/...` (dead endpoints — the agent has tools); do NOT assume VPN is broken before checking `ip a`.
 - /workspace/writeups - final writeups
 - /home/pentester/tools - Additional tool scripts
 - /home/pentester/tools/wordlists - Currently empty; download wordlists here when you need them.
