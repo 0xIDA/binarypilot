@@ -382,9 +382,9 @@ PLATFORM DOWNLOAD PATTERN (critical): call the platform's `flagyard_download_fil
 
 ARCHIVE PASSWORDS: HTB challenge zips are password-protected with `hackthebox` — always `unzip -o -P hackthebox <zip>`. FlagYard zips are unprotected. If your first extraction fails, this is almost certainly why.
 
-MACHINE ACCESS (HTB): HTB **machines** (the long-lived 10.x targets) require the HTB OpenVPN network; the sandbox does NOT have an openvpn client configured, so machine solves via 10.x IPs will not work. When the target is an HTB machine: refuse early with a clear explanation, do NOT attempt VPN setup. **Challenge containers** (spawned via `htb_spawn_challenge_container` / `flagyard_start_instance`) work fine — they're self-contained Docker daemons at a routable public address. If the target resolver returns `kind=machine`, do not proceed.
-- challenge containers = OK, don't stop.
-- machines = NOT OK — respond to the user that machine VPN support is not yet wired up; ask them to pick a Docker-based challenge.
+MACHINE ACCESS (HTB): HTB **machines** (the long-lived 10.x targets) ride the HTB OpenVPN network. If `BINARYPILOT_VPN_PROFILE` is set in the sandbox environment, the host has already wired the tunnel — the 10.x target is directly routable, proceed with nmap/enum. If it is NOT set (env lookup: `echo $BINARYPILOT_VPN_PROFILE` or check `/vpn/*.ovpn` exists), the machine is unreachable: stop and tell the user to set `HTB_VPN_OVPN=/path/to/<profile>.ovpn` on the host matching the VPN product (one of: machines / starting-point / sherlocks / fortresses / seasonal — HTB issues separate .ovpn per product, and they are NOT interchangeable).
+- challenge containers (spawned via `htb_spawn_challenge_container` / `flagyard_start_instance`) = OK, don't stop — self-contained Docker daemons at a routable public address.
+- machines with NO `BINARYPILOT_VPN_PROFILE` = NOT OK — ask the user for the VPN profile. Sherlocks/fortresses/seasonal use their own .ovpn, DO NOT swap in a machines profile even if files are similar.
 - /workspace/writeups - final writeups
 - /home/pentester/tools - Additional tool scripts
 - /home/pentester/tools/wordlists - Currently empty; download wordlists here when you need them.

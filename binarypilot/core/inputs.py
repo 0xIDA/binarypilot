@@ -47,11 +47,14 @@ def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
     prefix = f"{platform} {kind}"
     if name:
         prefix += f" '{name}'"
-    if kind == "machine":
+    if kind in {"machine", "sherlock", "fortress", "starting-point", "seasonal"}:
         return (
-            f"{prefix} — machine id {ident}. **HTB machines require OpenVPN and are not "
-            "yet supported by this build. Refuse politely and suggest a Docker-based "
-            "challenge (kind=challenge) instead.**"
+            f"{prefix} — id {ident}. HTB 10.x target on the OpenVPN network. "
+            f"If BINARYPILOT_VPN_PROFILE is set in the sandbox env, the tunnel is already up: "
+            f"proceed with nmap/enum against the assigned 10.x IP. If unset, the agent will ask "
+            f"the user to export HTB_VPN_OVPN=/path/to/<{kind}>.ovpn on the host — HTB issues a "
+            f"separate .ovpn per VPN product (machines, starting-point, sherlocks, fortresses, "
+            f"seasonal) that is NOT interchangeable."
         )
     suffix = (
         " Phases in strict order: (1) resolve + fetch metadata, "

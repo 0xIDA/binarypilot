@@ -142,6 +142,14 @@ def _apply_vpn_support(create_kwargs: dict[str, Any]) -> None:
         env.setdefault("BINARYPILOT_VPN_PROFILE", target)
     extra_hosts = create_kwargs.setdefault("extra_hosts", {})
     extra_hosts.setdefault("vpn.binarypilot.internal", p.stem)
+    # OpenVPN needs /dev/net/tun to open a tun device. Bind it through.
+    devices = create_kwargs.setdefault("devices", [])
+    if not any("/dev/net/tun" in d for d in devices):
+        devices.append("/dev/net/tun:/dev/net/tun")
+    # NET_ADMIN is required for route/tun setup inside the container.
+    caps = create_kwargs.setdefault("cap_add", [])
+    if "NET_ADMIN" not in caps:
+        caps.append("NET_ADMIN")
 
 
 def _apply_run_labels(create_kwargs: dict[str, Any]) -> None:

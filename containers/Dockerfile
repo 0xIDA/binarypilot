@@ -60,5 +60,12 @@ RUN /app/.venv/bin/pip install --no-cache-dir \
     z3-solver \
     r2pipe
 
+# VPN auto-start wrapper: if BINARYPILOT_VPN_PROFILE is set (or /vpn/*.ovpn is
+# mounted), bring openvpn up in the background before passing control to the
+# base entrypoint. No-op when unset so challenge-container mode stays clean.
+USER root
+COPY containers/binarypilot-entrypoint.sh /usr/local/bin/binarypilot-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/binarypilot-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/binarypilot-entrypoint.sh"]
 USER pentester
 WORKDIR /workspace

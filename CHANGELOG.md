@@ -7,8 +7,13 @@ work under their own headings.
 
 ## [Unreleased]
 
+### Added
+- Image entrypoint wrapper `containers/binarypilot-entrypoint.sh`: when `BINARYPILOT_VPN_PROFILE` is set (or `/vpn/*.ovpn` is mounted), the sandbox auto-starts `openvpn --config` in daemon mode before handing off to the base entrypoint. No-op when unset.
+- All HTB VPN products recognized by `_format_ctf_challenge_line` (machines, starting-point, sherlocks, fortresses, seasonal); each gets the correct VPN path hint in the root-task message.
+
 ### Fixed
-- Dropped `kmod` from the OpenVPN Docker layer — Kali's kali-rolling does not ship it under that name in the base image's apt sources, breaking the 1.5.0 image build. `openvpn` with `/dev/net/tun` is sufficient; no module loading needed in the container.
+- `_apply_vpn_support` now binds `/dev/net/tun` and adds `NET_ADMIN` (required for openvpn+tun setup inside the container); previously only the read-only profile mount and env var were wired.
+- Stale hard-refusal language in the system prompt + root-task line — replaced with the VPN-wired-vs-not-wired dual state (the 1.5.0 prompt still said "NOT YET SUPPORTED" after OpenVPN shipped).
 
 ## [1.5.0] — 2026-08-04
 
