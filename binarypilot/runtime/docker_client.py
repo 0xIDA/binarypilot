@@ -110,6 +110,40 @@ def _apply_log_limits(create_kwargs: dict[str, Any]) -> None:
     )
 
 
+def _apply_vpn_support(create_kwargs: dict[str, Any]) -> None:
+    """Wire an HTB OpenVPN profile into the container when HTB_VPN_OVPN points at one.
+
+    The profile is bind-mounted read-only at /vpn/<basename>.ovpn inside the
+    sandbox; the image entrypoint auto-starts `openvpn --config` on any
+    /vpn/*.ovpn file it finds. /dev/net/tun must exist inside the container for
+    tun-device VPN; bridge GRE/bridge VPNs that don't use tun do not need it.
+    """
+    profile = os.environ.get("HTB_VPN_OVPN", "").strip()
+    if not profile:
+        return
+    from pathlib import Path
+
+    p = Path(profile).expanduser()
+    if not p.is_file() or p.suffix != ".ovpn":
+        return
+    mounts = create_kwargs.setdefault("mounts", [])
+    if not isinstance(mounts, list):
+        mounts = list(mounts)
+        create_kwargs["mounts"] = mounts
+    # Avoid duplicating if docker_client's mount list already carries /vpn
+    target = f"/vpn/{p.name}"
+    if not any(
+        isinstance(m, dict) and (m.get("target") == target or m.get("destination") == target)
+        for m in mounts
+    ):
+        mounts.append({"type": "bind", "source": str(p), "target": target, "read_only": True})
+    env = create_kwargs.setdefault("environment", {})
+    if isinstance(env, dict):
+        env.setdefault("BINARYPILOT_VPN_PROFILE", target)
+    extra_hosts = create_kwargs.setdefault("extra_hosts", {})
+    extra_hosts.setdefault("vpn.binarypilot.internal", p.stem)
+
+
 def _apply_run_labels(create_kwargs: dict[str, Any]) -> None:
     run_id = os.getenv("BINARYPILOT_RUN_ID")
     if not run_id:
@@ -236,6 +270,7 @@ class BinaryPilotDockerSandboxClient(DockerSandboxClient):
         _apply_resource_limits(create_kwargs)
         _apply_log_limits(create_kwargs)
         _apply_run_labels(create_kwargs)
+        _apply_vpn_support(create_kwargs)
 
         # BinaryPilot injection: local source trees, sorted shallowest-first so a
         # nested spec lands on top of the tree it covers.

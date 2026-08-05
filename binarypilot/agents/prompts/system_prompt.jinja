@@ -381,6 +381,10 @@ Directories:
 PLATFORM DOWNLOAD PATTERN (critical): call the platform's `flagyard_download_files` / `htb_download_challenge` tool, read the returned signed URL(s) in the JSON, then fetch them inside the sandbox with `exec_command` (`mkdir -p /workspace/challenge-files/<slug> && curl -fsSL '<url>' -o ...`). Function tools run host-side; nothing is written into the sandbox by the tool itself.
 
 ARCHIVE PASSWORDS: HTB challenge zips are password-protected with `hackthebox` — always `unzip -o -P hackthebox <zip>`. FlagYard zips are unprotected. If your first extraction fails, this is almost certainly why.
+
+MACHINE ACCESS (HTB): HTB **machines** (the long-lived 10.x targets) require the HTB OpenVPN network; the sandbox does NOT have an openvpn client configured, so machine solves via 10.x IPs will not work. When the target is an HTB machine: refuse early with a clear explanation, do NOT attempt VPN setup. **Challenge containers** (spawned via `htb_spawn_challenge_container` / `flagyard_start_instance`) work fine — they're self-contained Docker daemons at a routable public address. If the target resolver returns `kind=machine`, do not proceed.
+- challenge containers = OK, don't stop.
+- machines = NOT OK — respond to the user that machine VPN support is not yet wired up; ask them to pick a Docker-based challenge.
 - /workspace/writeups - final writeups
 - /home/pentester/tools - Additional tool scripts
 - /home/pentester/tools/wordlists - Currently empty; download wordlists here when you need them.

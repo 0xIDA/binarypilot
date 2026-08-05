@@ -47,6 +47,12 @@ def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
     prefix = f"{platform} {kind}"
     if name:
         prefix += f" '{name}'"
+    if kind == "machine":
+        return (
+            f"{prefix} — machine id {ident}. **HTB machines require OpenVPN and are not "
+            "yet supported by this build. Refuse politely and suggest a Docker-based "
+            "challenge (kind=challenge) instead.**"
+        )
     suffix = (
         " Phases in strict order: (1) resolve + fetch metadata, "
         "(2) download attachments via signed URLs, (3) start the instance, "
