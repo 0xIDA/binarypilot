@@ -38,7 +38,6 @@ RUN apt-get update && \
         # OpenVPN client: HTB machines / generic VPN targets (only active if
         # /vpn/*.ovpn is bind-mounted by the session initializer)
         openvpn \
-        kmod \
         iproute2 \
     && gem install --no-document zsteg one_gadget \
     && apt-get install -y --no-install-recommends wordlists seclists \

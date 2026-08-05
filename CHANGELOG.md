@@ -7,12 +7,18 @@ work under their own headings.
 
 ## [Unreleased]
 
+### Fixed
+- Dropped `kmod` from the OpenVPN Docker layer — Kali's kali-rolling does not ship it under that name in the base image's apt sources, breaking the 1.5.0 image build. `openvpn` with `/dev/net/tun` is sufficient; no module loading needed in the container.
+
 ## [1.5.0] — 2026-08-04
+
+### Added
+- OpenVPN client layer in the sandbox image (`openvpn` + `iproute2`). Image tag bumped to `ghcr.io/0xida/binarypilot-sandbox:1.5.0`.
+- `_apply_vpn_support` in `binarypilot/runtime/docker_client.py` — when the host exports `HTB_VPN_OVPN`, the profile is bind-mounted read-only at `/vpn/<name>.ovpn` and `BINARYPILOT_VPN_PROFILE` is set inside the sandbox. No-op when the env var is unset.
 
 ### Fixed
 - Tool-call loop stalls: `wait_for_agents` default timeout 300s → 120s (parents wake sooner when subagents park) (`bcaee23`).
-- HTB machine targets default to a clear refuse path instead of silently burning turns on an unreachable 10.x network — `_format_ctf_challenge_line` returns an explicit "machines require OpenVPN — not yet supported; pick a Docker-based challenge (kind=challenge)" string (`[this]`).
-- Agent prompt now includes the same rule under "MACHINE ACCESS (HTB)" (`[this]`).
+- HTB machine targets: dropped the "machines require OpenVPN — not yet supported" hard refusal. Root-task line + system prompt now say "if `BINARYPILOT_VPN_PROFILE` is present the entrypoint wires the tunnel; machines reachable", and machines still decline gracefully when the env is absent.
 
 ## [1.0.0] — 2026-08-04
 
