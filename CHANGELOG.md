@@ -8,8 +8,7 @@ work under their own headings.
 ## [1.6.3] — 2026-08-06
 
 ### Added
-- New CTF skill `pwn-windows-emulation.md`: sogen (momo5502) — Windows/Linux userland emulator run at CPU+syscall level, real system DLLs, snapshot/restore, hooks on memory/instruction/syscall, GDB-protocol attach (anti-debug can't see it). Covers when to reach for sogen (Windows PE, anti-debug, deterministic replay) vs. when to stay on pwntools (`pwn.md`); one-time root.zip caching to `/opt/sogen-root`; minimal `create_application` snippet; snapshot example.
-- `containers/Dockerfile`: `sogen` added to the `/app/.venv/bin/pip install` line so it's already available in the sandbox when the image is next rebuilt.
+- New CTF skill `pwn-windows-emulation.md`: sogen (momo5502) — Windows/Linux userland emulator run at CPU+syscall level, real system DLLs, snapshot/restore, hooks on memory/instruction/syscall, GDB-protocol attach (anti-debug can't see it). Covers when to reach for sogen (Windows PE, anti-debug, deterministic replay) vs. when to stay on pwntools (`pwn.md`); one-time root.zip caching to `/opt/sogen-root`; minimal `create_application` snippet; snapshot example; explicit PyPI-wheel compatibility caveat (cp39-only, sandbox runs 3.13 → install on a python3.9 OR build from source).
 
 ## [1.6.2] — 2026-08-06
 

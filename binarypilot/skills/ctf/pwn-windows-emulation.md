@@ -15,9 +15,24 @@ If the target is a plain ELF + known-mitigation, stick to `pwn.md` + pwntools â€
 
 ## Install + first run
 
+> **Compatibility caveat.** sogen's PyPI package (`pip install sogen`) ships
+> prebuilt wheels for **cp39 only** (plus an sdist that needs a C++20
+> toolchain to build). The sandbox's `/app/.venv/bin/python3` is 3.13, so a
+> bare `pip install sogen` **will not work**. Two working paths:
+>
+> - Bring a Python 3.9 in the sandbox (via `uv` or system package), then
+>   `/path/to/py3.9 -m pip install sogen`.
+> - Build from source: `git clone --recurse-submodules
+>   https://github.com/momo5502/sogen.git && cmake --preset=vs2022` per upstream.
+>   Needs ~10 GB disk and a full C++ toolchain; only worth it if the workflow
+>   genuinely needs repeated runs.
+>
+> If neither is palatable, fall back to plain `pwn.md` workflow â€” most CTF PE
+> challenges don't actually need emulation.
+
 ```bash
-# One-time venv prep (skip if /app/.venv/bin/sogen already exists via pip install sogen)
-/app/.venv/bin/pip install --quiet sogen
+# One-time venv prep, on a CP39 interpreter only (see caveat above):
+/path/to/py3.9 -m pip install --quiet sogen
 
 # Emulation root = the real Windows system DLLs snapshot (~800 MB).
 # Cache it outside /workspace so it survives the run's bind-mount layout.

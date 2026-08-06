@@ -58,8 +58,7 @@ RUN /app/.venv/bin/pip install --no-cache-dir \
     pycryptodome \
     sympy \
     z3-solver \
-    r2pipe \
-    sogen
+    r2pipe
 
 # VPN auto-start wrapper: if BINARYPILOT_VPN_PROFILE is set (or /vpn/*.ovpn is
 # mounted), bring openvpn up in the background before passing control to the
