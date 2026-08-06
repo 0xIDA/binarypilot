@@ -27,7 +27,7 @@
 curl -sSL https://idor.lol | bash
 
 # Creds
-export BINARYPILOT_LLM="openai/gpt-5.4"
+export BINARYPILOT_LLM="openai/gpt-5.6"
 export LLM_API_KEY="***"
 export HTB_TOKEN="eyJhbGc..."                                # or:
 export FLAGYARD_USERNAME="you" FLAGYARD_PASSWORD="***"
@@ -38,35 +38,39 @@ binarypilot --challenge "Lame" --platform htb
 binarypilot --challenge "Web 01" --platform flagyard
 ```
 
-First run pulls the sandbox image (`ghcr.io/0xida/binarypilot-sandbox:1.2.0`). Runs land in `binarypilot_runs/<run>/`.
+First run pulls the sandbox image matching the installed CLI version
+(`ghcr.io/0xida/binarypilot-sandbox:<your-version>`); override with
+`BINARYPILOT_IMAGE=...` if you need a specific one. Runs land in
+`binarypilot_runs/<run>/`.
 
 ## Categories
 
-- **Crypto** — RSA, block ciphers, classical, ECC, exotic, historical, ZKP, PRNG
-- **Pwn** — stack + heap, ret2*, format strings, kernel + sandbox escapes
-- **Reverse** — anti-analysis, x86/ARM/MIPS, .NET, Java, Python bytecode, WASM, custom VMs, packed
+- **Crypto** — RSA, ECC, modern (AES/ChaCha), classical, PRNG, ZKP, block ciphers
+- **Pwn** — stack + heap, ret2*, ROP chains, format strings, kernel/sandbox escapes, Windows PE emulation via [sogen](https://github.com/momo5502/sogen)
+- **Reverse** — anti-analysis, x86/ARM/MIPS, .NET, Android/Java, Python bytecode, WASM, custom VMs / packers
 - **Web** — SQLi, SSTI, XSS, SSRF, IDOR, JWT, deserialization, prototype pollution, Web3
-- **Forensics** — steganography, PCAP, memory, deleted data, signal/hardware captures
+- **Forensics** — disk/memory, PCAP, deleted-data, steganography, signals/hardware, 3D-printing
 - **OSINT** — geolocation, social, dorking, DNS, wayback
 - **Misc** — Python/Bash jails, esoteric languages, games/VMs, RF/SDR, encoding layers
 
-100+ playbooks vendored in [`binarypilot/skills/ctf/`](binarypilot/skills/README.md).
+75 skills vendored in [`binarypilot/skills/ctf/`](binarypilot/skills/README.md).
 
 ## Configuration
 
 ```bash
-# LLM
-export BINARYPILOT_LLM="openai/gpt-5.4"     # litellm-compatible, any provider
+# LLM (any litellm-compatible provider)
+export BINARYPILOT_LLM="openai/gpt-5.6"
 export LLM_API_KEY="sk-..."
-export LLM_API_BASE="http://localhost:11434" # local (Ollama, LMStudio)
+export LLM_API_BASE="http://localhost:11434"   # local (Ollama, LMStudio)
 
 # Platforms
 export HTB_TOKEN="***"                       # HackTheBox App Token
 export FLAGYARD_USERNAME="you"
 export FLAGYARD_PASSWORD="***"               # or FLAGYARD_ACCESS_TOKEN
 
-# Sandbox image (default fine)
-export BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.2.0"
+# Sandbox image — defaults to match the installed CLI version; override only
+# for pinning or custom images.
+export BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.6.4"
 ```
 
 Or persist in `~/.binarypilot/cli-config.json`.
@@ -96,9 +100,6 @@ binarypilot --challenge "Web 01" --platform flagyard --max-budget 5.00 --max-tur
 
 # Open local viewer of the last run
 binarypilot view
-
-# Existing pentest-mode compatibility
-binarypilot --target https://your-app.com
 ```
 
 ## CLI (subset)

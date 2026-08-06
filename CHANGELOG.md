@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.5] — 2026-08-06
+
+### Changed
+- README refresh: LLM example `gpt-5.4` → `gpt-5.6`; the stale `sandbox:1.2.0` references replaced with the version-coupled wording (image tag tracks the installed CLI version since 1.6.4); "100+ playbooks" → "75 skills" (actual count); Pwn category now mentions sogen for Windows PE emulation; dropped the upstream strix-era "Existing pentest-mode compatibility" example that no longer maps to anything this CLI does.
+
 ## [1.6.4] — 2026-08-06
 
 ### Fixed
