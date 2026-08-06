@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.5.9] — 2026-08-06
+
+### Fixed
+- **Findings tab was always empty.** Root cause: the viewer polled `/api/vulnerabilities`, which answered from `vulnerabilities.json` — a pentest-era file the CTF workflow never writes. CTF solves go through `report_solve` → `solves.json` + `writeups/<id>.md`, so the tab had nothing to show. Added `read_findings(run_dir)` in `binarypilot/interface/viewer/transcript.py`: returns `vulnerabilities.json` when present (pentest runs untouched), otherwise maps each `solves.json` record into a vulnerability-shaped dict so the existing Findings list + detail card render it unchanged. Each solve contributes: `id` / `title` / `severity: "low"` (CTF has no severity palette; the TS fold would land them there anyway) / `target: challenge name` / `technical_analysis: writeup` / `poc_script_code: poc` / `poc_description: "Solver (<lang>)"` / extra `platform` and `flag` fields the JSON client tolerates. `severity_counts` and `read_vulnerabilities` call sites in `server.py` swapped to the new function.
+
 ## [1.5.8] — 2026-08-06
 
 ### Removed

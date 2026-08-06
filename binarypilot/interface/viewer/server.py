@@ -30,9 +30,9 @@ from binarypilot.core.paths import run_record_path
 from binarypilot.interface.viewer.transcript import (
     build_run_state,
     primary_target,
+    read_findings,
     read_report_markdown,
     read_run_summary,
-    read_vulnerabilities,
     severity_counts,
 )
 
@@ -73,7 +73,7 @@ def run_list_entry(run_dir: Path) -> dict[str, Any]:
         "start_time": record.get("start_time"),
         "end_time": record.get("end_time"),
         "finished": bool(record.get("finished")),
-        "severity_counts": severity_counts(read_vulnerabilities(run_dir)),
+        "severity_counts": severity_counts(read_findings(run_dir)),
     }
 
 
@@ -240,7 +240,7 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
             if path == "/api/run":
                 self._send_json(HTTPStatus.OK, read_run_summary(run_dir))
             elif path == "/api/vulnerabilities":
-                self._send_json(HTTPStatus.OK, read_vulnerabilities(run_dir))
+                self._send_json(HTTPStatus.OK, read_findings(run_dir))
             elif path == "/api/report":
                 self._send_json(HTTPStatus.OK, {"markdown": read_report_markdown(run_dir)})
             elif path == "/api/report.pdf":

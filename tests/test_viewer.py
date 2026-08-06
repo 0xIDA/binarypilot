@@ -14,9 +14,9 @@ from binarypilot.core.paths import latest_run_dir, runs_base_dir
 from binarypilot.interface.viewer.server import serve
 from binarypilot.interface.viewer.transcript import (
     build_run_state,
+    read_findings,
     read_report_markdown,
     read_run_summary,
-    read_vulnerabilities,
 )
 
 
@@ -72,8 +72,72 @@ def test_read_run_summary_finished_flag(tmp_path: Path) -> None:
 
 def test_read_missing_artifacts_return_defaults(tmp_path: Path) -> None:
     run_dir = _make_run(tmp_path, "empty", status="running", end_time=None)
-    assert read_vulnerabilities(run_dir) == []
+    assert read_findings(run_dir) == []
     assert read_report_markdown(run_dir) == ""
+
+
+def test_read_findings_prefers_solves_over_vulnerabilities(tmp_path: Path) -> None:
+    """CTF runs write solves.json instead of vulnerabilities.json; the findings
+    endpoint maps each solve into a vulnerability-shaped record so the existing
+    frontend renders it without code changes."""
+    run_dir = _make_run(tmp_path, "ctf", status="completed", end_time="2026-01-01T00:10:00Z")
+    solves = [
+        {
+            "id": "solve-0001",
+            "title": "FlagYard Beginner Web 01 — IDOR",
+            "challenge": "Beginner Web 01",
+            "platform": "flagyard",
+            "flag": "FlagY{abc123}",
+            "writeup": (
+                "1. Enum'd /api/users/<id>. 2. numeric id guesses other users."
+                " 3. /api/users/1 is admin."
+            ),
+            "poc": "#!/usr/bin/env bash\nexec curl -s https://inst/api/users/1",
+            "poc_language": "bash",
+            "timestamp": "2026-01-01 00:10:00 UTC",
+        }
+    ]
+    (run_dir / "solves.json").write_text(json.dumps(solves), encoding="utf-8")
+
+    findings = read_findings(run_dir)
+    assert len(findings) == 1
+    f = findings[0]
+    assert f["id"] == "solve-0001"
+    assert f["title"] == "FlagYard Beginner Web 01 — IDOR"
+    assert f["severity"] == "low"  # CTF has no severity palette; fold to low
+    assert f["target"] == "Beginner Web 01"
+    assert f["technical_analysis"] == solves[0]["writeup"]
+    assert f["poc_script_code"] == solves[0]["poc"]
+    assert f["platform"] == "flagyard"
+    assert f["flag"] == "FlagY{abc123}"
+
+
+def test_read_findings_passes_through_vulnerabilities_first(tmp_path: Path) -> None:
+    """If a run happens to have both files (e.g. mixed workflow), the finding
+    list prefers the explicit vulnerability records over solve mappings."""
+    run_dir = _make_run(tmp_path, "mixed", status="completed", end_time="2026-01-01T00:10:00Z")
+    (run_dir / "vulnerabilities.json").write_text(
+        json.dumps([{"id": "vuln-0001", "title": "SQLi", "severity": "high"}]),
+        encoding="utf-8",
+    )
+    (run_dir / "solves.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "solve-0001",
+                    "title": "ignored",
+                    "challenge": "x",
+                    "platform": "flagyard",
+                    "flag": "F{}",
+                    "writeup": "w",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    findings = read_findings(run_dir)
+    assert [r["id"] for r in findings] == ["vuln-0001"]
 
 
 def test_build_run_state_from_agents_json(tmp_path: Path) -> None:
