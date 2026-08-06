@@ -5,7 +5,19 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
-## [Unreleased]
+## [1.5.5] — 2026-08-06
+
+### Added
+- Installer UX (`scripts/install.sh`): ASCII banner + tagline, `[N/5]` step framing, braille spinner on long ops (`pip install pipx`, `pipx install`, `docker pull`), boxed "ready" panel on completion. TTY-only when `NO_COLOR` unset and TERM != dumb — plain logging falls through in CI/pipes. Cursor hidden during spinners, restored on trap.
+
+### Fixed
+- Sandbox image tag in installer: `1.2.0` → `1.5.0` (matches the `VPN: auto-start entrypoint` image the rest of the repo references).
+- `stop_spin`/`cleanup` returning non-zero under `set -e` when called bare (last command was a failed `[ -n ]` test) — install aborted at the config step with no message.
+
+### Removed
+- (none)
+
+## [1.5.4] — 2026-08-05
 
 ### Added
 - Two new HTB platform tools: `htb_get_machine_info(machine_id)` (machine profile + IP if spawned) and `htb_spawn_machine(machine_id, wait_seconds=30)` (spawns the VM and polls for the assigned 10.x IP). Both registered in the agent factory.
