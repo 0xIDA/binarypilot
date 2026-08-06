@@ -3,8 +3,8 @@ import {
   ArrowLeft,
   AlertCircle,
   Bot,
-  Mail,
   ChevronDown,
+  Download,
   History,
 } from "lucide-react";
 import type { Vulnerability, VulnerabilitySeverity } from "@/types/issues";
@@ -20,27 +20,22 @@ import { ScanPromptComposer } from "@/components/live/ScanPromptComposer";
 import { severityCounts, type ParsedRunSummary } from "@/lib/local-run-parser";
 import {
   fetchAll,
-  fetchAuthStatus,
   fetchCapabilities,
   fetchRunSummary,
   fetchRuns,
   fetchTranscript,
   fetchVulnerabilities,
-  forgetAuth,
-  type AuthStatus,
   type LoadedRun,
   type RunsPayload,
+  reportPdfUrl,
 } from "@/data/serverSource";
-import { ctaUrl, trackCta } from "@/lib/cta";
 import { runTitle } from "@/lib/target-utils";
 import Sidebar from "@/components/Sidebar";
 import PastRunsView from "@/components/PastRunsView";
-import EmailReportView from "@/components/EmailReportView";
 import { RunDetails } from "@/components/RunDetails";
 import { TrustToast } from "@/components/TrustToast";
-import FeedbackView from "@/components/FeedbackView";
 
-export type View = "overview" | "issues" | "agents" | "history" | "email" | "feedback";
+export type View = "overview" | "issues" | "agents" | "history";
 
 const TRUST_BANNER =
   "Your findings stay on your machine. They're rendered here locally in your browser and never uploaded or stored by BinaryPilot.";
@@ -54,21 +49,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<View>("overview");
-  const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [runs, setRuns] = useState<RunsPayload | null>(null);
-  const [emailPurpose, setEmailPurpose] = useState<"report" | "verify">("report");
-  const [emailSkipDisclosure, setEmailSkipDisclosure] = useState(false);
   // Whether this viewer can steer a live scan (true only inside the in-TUI
   // launcher that shares the running scan's coordinator + event loop).
   const [canSteer, setCanSteer] = useState(false);
-
-  const refreshAuth = useCallback(async () => {
-    try {
-      setAuth(await fetchAuthStatus());
-    } catch {
-      /* auth status is best-effort; the launched run stays viewable */
-    }
-  }, []);
 
   const refreshRuns = useCallback(async () => {
     try {
@@ -79,7 +63,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    void refreshAuth();
     void refreshRuns();
     // Capabilities never change over a session, so fetch once on mount.
     fetchCapabilities()
@@ -87,7 +70,7 @@ export default function App() {
       .catch(() => {
         /* absence of steering is the safe default */
       });
-  }, [refreshAuth, refreshRuns]);
+  }, [refreshRuns]);
 
   // Live polling, scoped to the active run. Re-runs when the active run changes
   // so switching to a past run (?run=<name>) reloads its data; a finished run
@@ -163,7 +146,6 @@ export default function App() {
   );
   const selected = run?.vulnerabilities.find((v) => v.id === selectedId) ?? null;
   const agentCount = run?.transcript.agents.length ?? 0;
-  const verified = auth?.verified === true;
 
   // Per-run guard for the default view: land on Agents while a scan is live,
   // Overview once it finishes. Applied at most once per run and never once the
@@ -205,32 +187,10 @@ export default function App() {
     initialViewAppliedRef.current = false;
   }, []);
 
-  const goEmail = useCallback((skipDisclosure: boolean, surface: string) => {
-    trackCta("email_report", surface);
-    setEmailPurpose("report");
-    setEmailSkipDisclosure(skipDisclosure);
-    userSetView("email");
-  }, [userSetView]);
-
-  // Only the Overview CTA routes into the email flow now (no nav item); its
-  // copy already states the tradeoff, so it starts the flow directly.
-  const openEmailFromOverview = useCallback(() => goEmail(true, "overview"), [goEmail]);
-
   const openHistory = useCallback(() => {
     void refreshRuns();
     userSetView("history");
   }, [refreshRuns, userSetView]);
-
-  const onPastRunsVerified = useCallback(async () => {
-    await refreshAuth();
-    await refreshRuns();
-  }, [refreshAuth, refreshRuns]);
-
-  const onForget = useCallback(async () => {
-    await forgetAuth();
-    await refreshAuth();
-    await refreshRuns();
-  }, [refreshAuth, refreshRuns]);
 
   return (
     <div className="min-h-screen bg-black text-white flex">
@@ -247,30 +207,20 @@ export default function App() {
         issuesCount={run?.vulnerabilities.length ?? 0}
         agentCount={agentCount}
         runCount={runs?.count ?? 0}
-        verified={verified}
-        email={auth?.email ?? null}
         onOpenHistory={openHistory}
-        onForget={() => void onForget()}
       />
 
       <div className="flex-1 min-w-0">
         {/* Top bar */}
         <div className="border-b border-[#222]">
           <div className="max-w-[88rem] mx-auto px-3 sm:px-6 py-4 flex items-center gap-1.5">
-            <a
-              href={ctaUrl("https://app.binarypilot.ai", "logo")}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackCta("logo", "topbar")}
-              className="flex items-center gap-1.5 opacity-90 transition-opacity hover:opacity-100 lg:hidden"
-              title="Open BinaryPilot Cloud"
-            >
+            <div className="flex items-center gap-1.5 lg:hidden">
               <img src="./logo.png" alt="BinaryPilot" className="w-10 h-8 object-cover" />
               <div className="text-base text-white font-medium tracking-tight">BinaryPilot</div>
-            </a>
+            </div>
             {run && <LiveIndicator finished={run.finished} />}
             <div className="ml-auto flex items-center gap-3">
-              {verified && runs && !runs.locked && runs.runs.length > 0 && (
+              {runs && runs.runs.length > 0 && (
                 <RunSwitcher
                   runs={runs}
                   activeRun={activeRun}
@@ -283,7 +233,7 @@ export default function App() {
         </div>
 
         <div className="max-w-[88rem] mx-auto px-3 sm:px-6 py-8 sm:py-12 space-y-6">
-          {error && !run && view !== "history" && view !== "email" && (
+          {error && !run && view !== "history" && (
             <div className="rounded-lg px-4 py-3 flex gap-3 items-start border border-red-500/30 bg-red-500/5">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-400" aria-hidden="true" />
               <p className="text-sm text-red-300">{error}</p>
@@ -296,24 +246,7 @@ export default function App() {
             key={`${activeRun ?? "launched"}:${view}:${selectedId ?? ""}`}
             className="animate-page-in space-y-6"
           >
-          {view === "email" ? (
-            <EmailReportView
-              activeRun={activeRun}
-              auth={auth}
-              purpose={emailPurpose}
-              skipDisclosure={emailSkipDisclosure}
-              onAuthChanged={() => {
-                void refreshAuth();
-                void refreshRuns();
-              }}
-              onExit={(dest) => setView(dest === "history" ? "history" : "overview")}
-            />
-          ) : view === "feedback" ? (
-            <FeedbackView
-              defaultEmail={auth?.email ?? null}
-              onExit={(dest) => setView(dest)}
-            />
-          ) : view === "history" ? (
+          {view === "history" ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-[#888]" aria-hidden="true" />
@@ -323,7 +256,6 @@ export default function App() {
                 runs={runs}
                 activeRun={activeRun}
                 onSelectRun={selectRun}
-                onVerified={() => void onPastRunsVerified()}
               />
             </div>
           ) : !run && !error ? (
@@ -358,7 +290,7 @@ export default function App() {
                   reportMarkdown={run.reportMarkdown}
                   raw={run.raw}
                   finished={run.finished}
-                  onOpenEmail={openEmailFromOverview}
+                  activeRun={activeRun}
                 />
               ) : view === "agents" && agentCount > 0 ? (
                 <AgentsTab run={run} canSteer={canSteer} />
@@ -574,31 +506,33 @@ function dedupeHeadings(md: string): string {
   return out.join("\n");
 }
 
-/** Primary local CTA: email an encrypted PDF. Verify-email affordance, no lock. */
-function EmailReportCta({ onOpenEmail }: { onOpenEmail: () => void }) {
+/** Primary local CTA: download the run's report as a PDF. No email round-trip;
+    the browser streams the bytes straight from the local viewer process. */
+function DownloadReportCta({ activeRun }: { activeRun: string | null }) {
   return (
-    <button
-      onClick={onOpenEmail}
-      className="group w-full cursor-pointer rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-left transition-colors hover:border-emerald-500/40"
+    <a
+      href={reportPdfUrl(activeRun)}
+      download
+      className="group block w-full rounded-xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-left transition-colors hover:border-cyan-500/40"
     >
       <div className="flex items-center gap-3">
         <div
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
-          style={{ border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)" }}
+          style={{ border: "1px solid rgba(34,211,238,0.3)", background: "rgba(34,211,238,0.08)" }}
         >
-          <Mail className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+          <Download className="h-4 w-4 text-cyan-400" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Email the writeup + solve artifacts for this run</p>
+          <p className="text-sm font-semibold text-white">Download the report for this run</p>
           <p className="mt-0.5 text-xs text-[#888]">
-            Encrypted with a key only you can see, email verified with a one-time code before sending.
+            Saved straight to your machine. No email, no verification.
           </p>
         </div>
         <span className="flex-shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition-opacity group-hover:opacity-90">
           Export report to PDF
         </span>
       </div>
-    </button>
+    </a>
   );
 }
 
@@ -609,7 +543,7 @@ function OverviewTab({
   reportMarkdown,
   raw,
   finished,
-  onOpenEmail,
+  activeRun,
 }: {
   summary: ParsedRunSummary;
   counts: Record<VulnerabilitySeverity, number>;
@@ -617,7 +551,7 @@ function OverviewTab({
   reportMarkdown: string | null;
   raw: Record<string, unknown>;
   finished: boolean;
-  onOpenEmail: () => void;
+  activeRun: string | null;
 }) {
   const sections = (
     [
@@ -642,11 +576,11 @@ function OverviewTab({
         </div>
       )}
 
-      {/* Primary CTA: gated to finished so a live run doesn't email a partial
+      {/* Primary CTA: gated to finished so a live run doesn't export a partial
           report. */}
       {finished && (
         <div className="animate-card-in">
-          <EmailReportCta onOpenEmail={onOpenEmail} />
+          <DownloadReportCta activeRun={activeRun} />
         </div>
       )}
 

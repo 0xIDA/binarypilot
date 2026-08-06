@@ -27,7 +27,6 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, unquote, urlencode, urlsplit
 
 from binarypilot.core.paths import run_record_path
-from binarypilot.interface.viewer import auth
 from binarypilot.interface.viewer.transcript import (
     build_run_state,
     primary_target,
@@ -78,17 +77,16 @@ def run_list_entry(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def build_runs_payload(base_dir: Path, *, verified: bool) -> dict[str, Any]:
-    """The /api/runs payload. Gates the run list behind email verification.
-
-    The count is always advertised so the UI can tease the history, but the
-    entries only appear once the viewer is verified.
+def build_runs_payload(base_dir: Path) -> dict[str, Any]:
+    """The /api/runs payload: every run on disk, gated by the caller's session
+    capability (local machine) instead of an email-verification round-trip.
     """
     run_dirs = _iter_run_dirs(base_dir)
-    count = len(run_dirs)
-    if not verified:
-        return {"locked": True, "count": count, "runs": []}
-    return {"locked": False, "count": count, "runs": [run_list_entry(d) for d in run_dirs]}
+    return {
+        "locked": False,
+        "count": len(run_dirs),
+        "runs": [run_list_entry(d) for d in run_dirs],
+    }
 
 
 def resolve_run_dir(base_dir: Path, run_param: str | None, default_run_dir: Path) -> Path | None:
@@ -172,16 +170,6 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
             try:
                 if path == "/api/event":
                     self._handle_event()
-                elif path == "/api/auth/otp/start":
-                    self._handle_otp_start()
-                elif path == "/api/auth/otp/verify":
-                    self._handle_otp_verify()
-                elif path == "/api/auth/forget":
-                    self._handle_forget()
-                elif path == "/api/report/send":
-                    self._handle_report_send()
-                elif path == "/api/feedback":
-                    self._handle_feedback()
                 elif path == "/api/agents/steer":
                     self._handle_steer()
                 else:
@@ -202,13 +190,6 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 return {}
             return body if isinstance(body, dict) else {}
 
-        # Funnel events the viewer is allowed to forward. This handler is the
-        # trust boundary: only these event names, with only their known props,
-        # ever reach PostHog. Everything else (including any PII) is dropped.
-        _EMAIL_EVENTS = frozenset(
-            {"email_submitted", "email_verified", "report_sent", "work_email_required"}
-        )
-
         def _handle_event(self) -> None:
             body = self._read_body()
             # Forwarded as anonymous PostHog events that respect the global
@@ -221,11 +202,6 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 cta = str(body.get("cta") or "unknown")
                 surface = body.get("surface")
                 posthog.viewer_cta_clicked(cta, surface=str(surface) if surface else None)
-            elif event in self._EMAIL_EVENTS:
-                from binarypilot.telemetry import posthog
-
-                purpose = body.get("purpose")
-                posthog.viewer_email_event(str(event), purpose=str(purpose) if purpose else None)
             elif event == "agent_steered":
                 from binarypilot.telemetry import posthog
 
@@ -234,23 +210,17 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
 
         def _handle_api(self, path: str, query: dict[str, list[str]]) -> None:
-            # The launched run is always viewable with no verification. The
-            # cross-run history list (/api/runs) unlocks its entries only for a
-            # caller that holds this process's session capability *and* is email
-            # verified, so merely reaching an exposed --host port never leaks the
-            # run list (the payload still advertises the count as a teaser).
+            # The launched run is always viewable. The cross-run history list
+            # (/api/runs) needs only this process's session capability — no
+            # email verification tier anymore.
             if path == "/api/runs":
-                unlocked = self._has_session() and auth.is_verified()
-                payload = build_runs_payload(state.base_dir, verified=unlocked)
+                payload = build_runs_payload(state.base_dir)
                 self._send_json(HTTPStatus.OK, payload)
                 return
             if path == "/api/capabilities":
                 # Steering is only possible when the viewer shares a live scan's
                 # coordinator + event loop (the TUI launcher wires a handler).
                 self._send_json(HTTPStatus.OK, {"can_steer": state.steer_handler is not None})
-                return
-            if path == "/api/auth/status":
-                self._handle_auth_status()
                 return
 
             run_values = query.get("run")
@@ -260,18 +230,12 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown run"})
                 return
 
-            # The launched run is always viewable. Any *other* run's data is part
-            # of the gated history: it needs this process's session capability
-            # (so merely reaching an exposed --host port is not enough) *and*
-            # email verification -- otherwise knowing a run name would leak its
-            # metadata, vulnerabilities, report, and transcript.
-            if run_dir.resolve() != state.run_dir.resolve():
-                if not self._has_session():
-                    self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                    return
-                if not auth.is_verified():
-                    self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unverified"})
-                    return
+            # The launched run is always viewable. Any *other* run's data needs
+            # the session capability (so merely reaching an exposed --host port
+            # doesn't leak runs); no email-verification tier anymore.
+            if run_dir.resolve() != state.run_dir.resolve() and not self._has_session():
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+                return
 
             if path == "/api/run":
                 self._send_json(HTTPStatus.OK, read_run_summary(run_dir))
@@ -279,148 +243,32 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.OK, read_vulnerabilities(run_dir))
             elif path == "/api/report":
                 self._send_json(HTTPStatus.OK, {"markdown": read_report_markdown(run_dir)})
+            elif path == "/api/report.pdf":
+                self._handle_report_pdf(run_dir)
             elif path == "/api/transcript":
                 self._send_json(HTTPStatus.OK, build_run_state(run_dir))
             else:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
 
-        def _handle_auth_status(self) -> None:
-            # The cached verified email is only disclosed to a caller holding this
-            # process's session capability, so a cookie-less client on an exposed
-            # --host port cannot read it; everyone else looks unverified.
-            # Verification is reported through is_verified() so an expired record
-            # is advertised as unverified -- otherwise the SPA would suppress
-            # re-verification while history stays locked, stranding the user.
-            if not self._has_session():
-                self._send_json(HTTPStatus.OK, {"verified": False, "email": None})
-                return
-            record = auth.read_auth()
-            self._send_json(
-                HTTPStatus.OK,
-                {
-                    "verified": auth.is_verified(),
-                    "email": record.get("email") if record else None,
-                },
-            )
-
-        def _handle_otp_start(self) -> None:
-            if not self._has_session():
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                return
-            email = str(self._read_body().get("email") or "").strip()
-            if not email:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_email"})
-                return
-            try:
-                auth.otp_start(email)
-            except auth.RelayError as exc:
-                self._send_relay_error(exc)
-                return
-            self._send_json(HTTPStatus.OK, {"ok": True})
-
-        def _handle_otp_verify(self) -> None:
-            if not self._has_session():
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                return
-            body = self._read_body()
-            email = str(body.get("email") or "").strip()
-            code = str(body.get("code") or "").strip()
-            if not email or not code:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_code"})
-                return
-            try:
-                result = auth.otp_verify(email, code)
-            except auth.RelayError as exc:
-                self._send_relay_error(exc)
-                return
-            auth.write_auth(
-                email=result.get("email") or email,
-                token=result["token"],
-                verified_at=result.get("expires_at") or "",
-            )
-            verified_email = result.get("email") or email
-            self._send_json(HTTPStatus.OK, {"verified": True, "email": verified_email})
-
-        def _handle_forget(self) -> None:
-            # Clearing the cached verification is a state change, so it requires
-            # this process's session capability: a cookie-less caller on an
-            # exposed --host port must not be able to log the operator out.
-            if not self._has_session():
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                return
-            auth.forget()
-            self._send_json(HTTPStatus.OK, {"ok": True})
-
-        def _handle_report_send(self) -> None:
-            if not self._has_session():
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                return
-            record = auth.read_auth()
-            if record is None:
-                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unverified"})
-                return
-            run_param = str(self._read_body().get("run") or "") or None
-            run_dir = resolve_run_dir(state.base_dir, run_param, state.run_dir)
-            if run_dir is None:
-                self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown run"})
-                return
-
+        def _handle_report_pdf(self, run_dir: Path) -> None:
+            """Stream the run's report as a plain (unencrypted) PDF download.
+            Local-first: no email round-trip, no relay, no password ceremony —
+            the download target is the operator's own browser."""
             summary = read_run_summary(run_dir)
-            # Emailing only makes sense for a completed run; a live scan would
-            # send a partial report. The UI hides the entry point, but fail
-            # closed here too so the endpoint can't be driven mid-scan.
             if not summary.get("finished", False):
                 self._send_json(HTTPStatus.CONFLICT, {"error": "run_not_finished"})
                 return
+            from binarypilot.interface.viewer.report_pdf import generate_report_pdf
 
-            from binarypilot.interface.viewer.report_pdf import build_encrypted_report
-
-            pdf_bytes, password, filename = build_encrypted_report(run_dir)
+            pdf_bytes = generate_report_pdf(run_dir)
             run_name = str(summary.get("run_name") or run_dir.name)
-            target = primary_target(summary) or "unknown target"
-            try:
-                # The password is intentionally NOT passed here; only the
-                # encrypted PDF bytes reach the relay.
-                auth.report_send(record["token"], pdf_bytes, filename, run_name, target)
-            except auth.RelayError as exc:
-                self._send_relay_error(exc)
-                return
-            # The password is returned only to the local (127.0.0.1) browser.
-            self._send_json(
-                HTTPStatus.OK,
-                {"ok": True, "password": password, "filename": filename},
-            )
-
-        # Cap on a feedback message so a runaway client cannot flood the relay.
-        _FEEDBACK_MESSAGE_MAX = 5000
-
-        def _handle_feedback(self) -> None:
-            # Requires this process's session capability, like the other POSTs,
-            # so an exposed --host port can't be used to spam the relay.
-            if not self._has_session():
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
-                return
-            body = self._read_body()
-            email = str(body.get("email") or "").strip()
-            message = str(body.get("message") or "").strip()
-            if not email:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_email"})
-                return
-            if not message:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_message"})
-                return
-            message = message[: self._FEEDBACK_MESSAGE_MAX]
-            try:
-                auth.feedback_submit(email, message)
-            except auth.RelayError as exc:
-                self._send_relay_error(exc)
-                return
-            # Server-authoritative: fire only after a successful relay (respects
-            # the telemetry opt-out; no message/email content is sent).
-            from binarypilot.telemetry import posthog
-
-            posthog.viewer_feedback_submitted()
-            self._send_json(HTTPStatus.OK, {"ok": True})
+            filename = f"binarypilot-report-{run_name}.pdf"
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(len(pdf_bytes)))
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
 
         # Cap on a steering message so a runaway client cannot flood the agent.
         _STEER_MESSAGE_MAX = 4000
@@ -451,21 +299,6 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.OK, {"ok": True})
             else:
                 self._send_json(HTTPStatus.OK, {"ok": False, "error": "not_delivered"})
-
-        def _send_relay_error(self, exc: auth.RelayError) -> None:
-            status_by_code = {
-                "rate_limited": HTTPStatus.TOO_MANY_REQUESTS,
-                "invalid_email": HTTPStatus.BAD_REQUEST,
-                "invalid_message": HTTPStatus.BAD_REQUEST,
-                "work_email_required": HTTPStatus.BAD_REQUEST,
-                "invalid_code": HTTPStatus.FORBIDDEN,
-                "reverify": HTTPStatus.UNAUTHORIZED,
-                "forbidden": HTTPStatus.FORBIDDEN,
-                "too_large": HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-                "unavailable": HTTPStatus.BAD_GATEWAY,
-            }
-            status = status_by_code.get(exc.code, HTTPStatus.BAD_GATEWAY)
-            self._send_json(status, {"error": exc.code})
 
         def _cookies(self) -> dict[str, str]:
             jar: dict[str, str] = {}

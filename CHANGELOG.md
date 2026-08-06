@@ -5,6 +5,19 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.5.8] — 2026-08-06
+
+### Removed
+- Viewer: the entire email-verification tier is gone (no OTP round-trip, no relay call, no `is_verified()` gate anywhere). Affects:
+  - Server: dropped `/api/auth/{otp/start,otp/verify,forget,status}`, `/api/report/send`, `/api/feedback`, and the `_EMAIL_EVENTS` telemetry allowlist (no longer produced). `binarypilot/interface/viewer/auth.py` deleted (its only consumer was `server.py`).
+  - Frontend: `EmailReportView`, `EmailVerifyInline`, `FeedbackView` deleted; `AuthStatus` / `OtpStartResult` / `OtpVerifyResult` / `SendReportResult` types and `fetchAuthStatus` / `otpStart` / `otpVerify` / `forgetAuth` / `sendReport` / `submitFeedback` clients removed from `serverSource.ts`.
+  - Sidebar: "Feedback & support" nav item removed (no relay to send to); "Forget this email" footer menu removed (no linked-email state to clear); `verified`/`email`/`onForget` props dropped.
+  - App: `View` union no longer includes `"email" | "feedback"`; `auth`/`refreshAuth`/`goEmail`/`openEmailFromOverview`/`onPastRunsVerified`/`onForget` all gone; the small-screen top-bar logo is no longer a cloud CTA.
+- Run history and cross-run data endpoints (`/api/runs`, `/api/run`, `/api/vulnerabilities`, `/api/report`, `/api/transcript`) now gate only on the local process's session cookie — no email verification. Keeps the `--host` exposure protection (a network peer without the cookie still gets 403); drops the marketing gating the user is not paying attention to.
+
+### Changed
+- "Export report" on the Overview tab now downloads the PDF straight from `/api/report.pdf?run=<name>` via `GET` (new `DownloadReportCta`, anchored to the new `reportPdfUrl` helper). The PDF ships unencrypted — the previous password ceremony only existed to protect bytes in transit to the email relay, and a local download doesn't need it. The "run not finished" guard (`409`) is unchanged: partial-run exports still blocked.
+
 ## [1.5.7] — 2026-08-06
 
 ### Changed
