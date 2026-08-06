@@ -5,6 +5,12 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.2] — 2026-08-06
+
+### Added
+- `workers/installer/wrangler.toml`: bound zone + route (`idor.lol/*`) in code so `wrangler deploy` idempotently re-attaches it.
+- `.gitignore`: `.wrangler/` (wrangler's local cache + state).
+
 ## [1.6.1] — 2026-08-06
 
 ### Added

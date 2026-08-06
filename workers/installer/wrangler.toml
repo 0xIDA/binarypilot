@@ -2,9 +2,5 @@ name = "binarypilot-installer"
 main = "index.js"
 compatibility_date = "2026-08-06"
 
-# Bind via the dashboard instead: Workers & Pages → binarypilot-installer →
-# Settings → Triggers → Routes → add `idor.lol/*`. Set `zone_name` and
-# uncomment `routes` below if you'd rather keep it in code.
-#
-# zone_name = "idor.lol"
-# routes = [{ pattern = "idor.lol/*", zone_name = "idor.lol" }]
+zone_name = "idor.lol"
+routes = [{ pattern = "idor.lol/*", zone_name = "idor.lol" }]

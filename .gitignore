@@ -4,6 +4,9 @@ node_modules/
 binarypilot/interface/viewer/frontend/node_modules/
 binarypilot/interface/viewer/frontend/.vite/
 
+# Wrangler (local cache + state for `wrangler deploy`)
+.wrangler/
+
 # Python
 __pycache__/
 *.py[cod]
