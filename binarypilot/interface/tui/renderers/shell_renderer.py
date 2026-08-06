@@ -227,7 +227,7 @@ class ExecCommandRenderer(BaseToolRenderer):
 
         content = _build_terminal_content(
             prompt="$",
-            prompt_style="#22c55e",
+            prompt_style="#22d3ee",
             command=cmd,
             parsed_result=parsed,
             tool_status=status,

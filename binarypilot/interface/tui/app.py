@@ -110,14 +110,12 @@ class ChatTextArea(TextArea):  # type: ignore[misc]
 
 class SplashScreen(Static):  # type: ignore[misc]
     ALLOW_SELECT = False
-    PRIMARY_GREEN = "#22c55e"
+    PRIMARY_CYAN = "#22d3ee"
     BANNER = (
-        " ██████╗ ██╗███╗   ██╗ █████╗ ██████╗ ██╗   ██╗██████╗ ██╗██╗      ██████╗ ████████╗\n"
-        " ██╔══██╗██║████╗  ██║██╔══██╗██╔══██╗╚██╗ ██╔╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝\n"
-        " ██████╔╝██║██╔██╗ ██║███████║██████╔╝ ╚████╔╝ ██████╔╝██║██║     ██║   ██║   ██║\n"
-        " ██╔══██╗██║██║╚██╗██║██╔══██║██╔══██╗  ╚██╔╝  ██╔═══╝ ██║██║     ██║   ██║   ██║\n"
-        " ██████╔╝██║██║ ╚████║██║  ██║██║  ██║   ██║   ██║     ██║███████╗╚██████╔╝   ██║\n"
-        " ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝"
+        "   ___  _____  _____   _____  _____  ______   ____  ______\n"
+        "  / _ )/  _/ |/ / _ | / _ \\ \\/ / _ \\/  _/ /  / __ \\/_  __/\n"
+        " / _  |/ //    / __ |/ , _/\\  / ___// // /__/ /_/ / / /\n"
+        "/____/___/_/|_/_/ |_/_/|_| /_/_/  /___/____/\\____/ /_/"
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -163,7 +161,7 @@ class SplashScreen(Static):  # type: ignore[misc]
 
     def _build_panel(self, start_line: Text) -> Panel:
         rows = [
-            Align.center(Text(self.BANNER.strip("\n"), style=self.PRIMARY_GREEN, justify="center")),
+            Align.center(Text(self.BANNER.strip("\n"), style=self.PRIMARY_CYAN, justify="center")),
             Align.center(Text(" ")),
             Align.center(self._build_welcome_text()),
             Align.center(self._build_version_text()),
@@ -181,7 +179,7 @@ class SplashScreen(Static):  # type: ignore[misc]
                 )
             )
 
-        return Panel.fit(Group(*rows), border_style=self.PRIMARY_GREEN, padding=(1, 6))
+        return Panel.fit(Group(*rows), border_style=self.PRIMARY_CYAN, padding=(1, 6))
 
     @staticmethod
     def _build_model_warning_text(model: str) -> Text:
@@ -194,11 +192,11 @@ class SplashScreen(Static):  # type: ignore[misc]
         return text
 
     def _build_url_text(self) -> Text:
-        return Text("b0f.ru", style=Style(color=self.PRIMARY_GREEN, bold=True))
+        return Text("b0f.ru", style=Style(color=self.PRIMARY_CYAN, bold=True))
 
     def _build_welcome_text(self) -> Text:
         text = Text("Welcome to ", style=Style(color="white", bold=True))
-        text.append("BinaryPilot", style=Style(color=self.PRIMARY_GREEN, bold=True))
+        text.append("BinaryPilot", style=Style(color=self.PRIMARY_CYAN, bold=True))
         text.append("!", style=Style(color="white", bold=True))
         return text
 
@@ -308,7 +306,7 @@ class VulnerabilityDetailScreen(ModalScreen):  # type: ignore[misc]
         "info": "#3b82f6",  # Blue
     }
 
-    FIELD_STYLE: ClassVar[str] = "bold #4ade80"
+    FIELD_STYLE: ClassVar[str] = "bold #22d3ee"
 
     def __init__(self, vulnerability: dict[str, Any]) -> None:
         super().__init__()
@@ -827,13 +825,13 @@ class BinaryPilotTUIApp(App):  # type: ignore[misc]
         self._sweep_num_squares: int = 6
         self._sweep_colors: list[str] = [
             "#000000",  # Dimmest (shows dot)
-            "#031a09",
-            "#052e16",
-            "#0d4a2a",
-            "#15803d",
-            "#22c55e",
-            "#4ade80",
-            "#86efac",  # Brightest
+            "#031018",
+            "#052028",
+            "#0d4048",
+            "#15606a",
+            "#1e8994",
+            "#30a5b1",
+            "#a8e8ef",  # Brightest
         ]
         self._dot_animation_timer: Any | None = None
         self._pending_scroll_end = False
@@ -1901,7 +1899,7 @@ class BinaryPilotTUIApp(App):  # type: ignore[misc]
 
     def _viewer_cta_markup(self, url: str | None = None) -> str:
         if url:
-            return f"[@click=app.open_viewer][#22c55e]● Viewer running[/][/]\n[dim]{url}[/]"
+            return f"[@click=app.open_viewer][#22d3ee]● Viewer running[/][/]\n[dim]{url}[/]"
         return "[@click=app.open_viewer]▶ Watch live in browser[/]"
 
     def _set_viewer_cta(self, markup: str) -> None:

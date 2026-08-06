@@ -7,7 +7,7 @@ from .base_renderer import BaseToolRenderer
 from .registry import register_tool_renderer
 
 
-FIELD_STYLE = "bold #4ade80"
+FIELD_STYLE = "bold #22d3ee"
 
 
 @register_tool_renderer
@@ -25,8 +25,8 @@ class FinishScanRenderer(BaseToolRenderer):
         recommendations = args.get("recommendations", "")
 
         text = Text()
-        text.append("◆ ", style="#22c55e")
-        text.append("Penetration test completed", style="bold #22c55e")
+        text.append("◆ ", style="#22d3ee")
+        text.append("Run completed", style="bold #22d3ee")
 
         if executive_summary:
             text.append("\n\n")

@@ -29,7 +29,7 @@ def _get_style_colors() -> dict[Any, str]:
     return {token: f"#{style_def['color']}" for token, style_def in style if style_def["color"]}
 
 
-FIELD_STYLE = "bold #4ade80"
+FIELD_STYLE = "bold #22d3ee"
 DIM_STYLE = "dim"
 FILE_STYLE = "bold #60a5fa"
 LINE_STYLE = "#facc15"

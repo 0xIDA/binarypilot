@@ -5,6 +5,13 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.5.7] — 2026-08-06
+
+### Changed
+- TUI branding: green (#22c55e/#4ade80/#16a34a) → cyan (#22d3ee/#0891b2/#0e7490/#155e75/#a5f3fc). Covers the splash banner + panel border + `b0f.ru` URL + "Welcome to BinaryPilot" highlight, the `_build_welcome_text` brand mention, the `_sweep_colors` dot animation gradient, the "Viewer running" indicator dot, the `FIELD_STYLE` in VulnerabilityDetail + reporting/finish renderers, the agent-message heading/bullet/hr/bold/italic strip accents, and the `$` shell prompt. Severity palette (critical/high/medium/low/info) and semantic success/failure pairs (red ✗ vs green ✓) untouched — green still means "OK" universally.
+- TUI splash banner: replaced the CP437 box-drawing "BINARYPILOT" (could render as fallback glyphs in the upper-left when the terminal's CP437/MU glyph coverage is thin) with pyfiglet's `smslant` cut — pure ASCII (slashes, underscores, pipes), renders identically on every terminal and stays legible at small widths.
+- `finish_renderer`: stale strix copy "Penetration test completed" → "Run completed".
+
 ## [1.5.6] — 2026-08-06
 
 ### Added
