@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BinaryPilot installer — curl | bash
 #
-#   curl -sSL https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh | bash
+#   curl -sSL https://idor.lol | bash
 #
 # What this does:
 #   1. Locates or installs pipx, installs binarypilot-agent into it.

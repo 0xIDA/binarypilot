@@ -24,7 +24,7 @@
 
 ```bash
 # One-line install
-curl -sSL https://raw.githubusercontent.com/0xIDA/binarypilot/main/scripts/install.sh | bash
+curl -sSL https://idor.lol | bash
 
 # Creds
 export BINARYPILOT_LLM="openai/gpt-5.4"

@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.0] — 2026-08-06
+
+### Changed
+- Installer URL: `curl -sSL https://idor.lol | bash` (was the long `raw.githubusercontent.com/...scripts/install.sh` path). README + in-script comment. Domain is Cloudflare-fronted and serves the install.sh at the root.
+
 ## [1.5.9] — 2026-08-06
 
 ### Fixed
