@@ -57,3 +57,19 @@ Current convention on `main`:
 - `Phase N[ab]: ...` for major milestones
 - `Verify: ...` for verification-state markers
 - `Docs: ...`, `Bug fix: ...`, `Refactor: ...` for deltas between phases
+
+## Version bumps and the sandbox image
+
+The runtime defaults `image` to `ghcr.io/0xida/binarypilot-sandbox:<installed-version>`
+(see `binarypilot/config/settings.py`). That means **every `version` bump in
+`pyproject.toml` needs a matching image push** before users see it:
+
+```bash
+docker login ghcr.io -u 0xIDA --password-stdin < <(gh auth token)
+docker build -f containers/Dockerfile -t ghcr.io/0xida/binarypilot-sandbox:<X.Y.Z> .
+docker push ghcr.io/0xida/binarypilot-sandbox:<X.Y.Z>
+```
+
+If `<X.Y.Z>` isn't on the registry, users on the fresh install/upgrade path
+hit `failed to resolve reference` (1.6.4 lesson — image was bumped for the
+version-coupling change but not pushed until later, breaking first-run).

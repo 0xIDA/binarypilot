@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.6] — 2026-08-06
+
+### Added
+- `docs/contributing.md`: explicit "every version bump needs a matching image push" section (`ghcr.io/0xida/binarypilot-sandbox:<version>`), with the build+push commands and the failure mode users hit if skipped. Captures the 1.6.4/1.6.5 first-run breakage lesson.
+
 ## [1.6.5] — 2026-08-06
 
 ### Changed
