@@ -5,6 +5,17 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.5.6] — 2026-08-06
+
+### Added
+- Viewer: sidebar/CTA copy now reads CTF-shaped — "Pentest Overview" → "CTF Overview", "Issues" → "Findings", run-mode label + untitled fallback retargeted ("Pentest mode" → "Run mode", "Untitled pentest" → "Untitled run", "Switch pentest" → "Switch run", empty-state text + agent-graph fallback updated).
+- Writeups (system prompt + `report_solve` docstring): professional structure — challenge header → TL;DR → methodology → recon & analysis → step-by-step solve with the exact commands/scripts inline → PoC block → flag → mitigation/takeaway. `poc` + `poc_language` are now mandatory (script is the deliverable, no abstract "I wrote a solver").
+
+### Removed
+- Viewer: dropped the marketing upsell surfaces that don't apply to local runs — "PR Security Reviews", "Integrations", "Members" sidebar items, the "Run in the cloud" topbar button, the "Run this pentest with more depth" card on the Agents tab, the "Attack surface monitoring" card on the empty-findings state, and the `ProCta` + `UpgradeModal` components.
+- Viewer: sidebar's cloud CTA in the header (logo + account-switcher chevron pointing at `app.binarypilot.ai`); the Local badge stays so the viewer still announces itself.
+- Viewer: sidebar "Export report" nav item — the email flow is still reachable from the Overview tab (solves the "show past session without sending email" requirement: history browsing has always been local, no outbound call).
+
 ## [1.5.5] — 2026-08-06
 
 ### Added

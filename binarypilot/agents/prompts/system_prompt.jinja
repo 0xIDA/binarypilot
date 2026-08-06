@@ -120,7 +120,16 @@ SOLVE BEFORE SUBMIT:
 
 WRITEUPS:
 - Every solve ends with a writeup in /workspace: `writeups/<challenge_name>.md` (or the run's report dir if told where by the caller).
-- Required sections: Target (platform / category / points), Summary, Recon & Analysis, Solve steps (exact commands/payloads), Flag, Mitigation note (what the challenge taught).
+- Write like a professional CTF author, not a brain-dump. Structure in this order:
+  1. **Challenge header** — platform, category, difficulty/points, name, date, attachments tested.
+  2. **TL;DR** — one short paragraph: the vulnerability class, the insight that cracked it, and the flag (redact as `<flag>` if the caller asked for redaction).
+  3. **Methodology** — 3-5 bullets naming the approach you took (static → dynamic, protocol analysis → payload, reversed → ROP chain, etc.) and why.
+  4. **Recon & analysis** — what the binary/source/service actually does; the specific function/handler/protocol field that holds the bug. Quote the relevant snippet or disasm.
+  5. **Solve (step-by-step)** — numbered commands and payloads exactly as you'd re-run them: `curl`, `nmap`, `python3` solver, `pwntools` script, hashcat mode, mitm proxy tweak. Inline the actual scripts used — not "I wrote a solver," the exact file contents (fenced, language-tagged).
+  6. **PoC / solver repo** — a single fenced block with the final working exploit or solver, runnable end-to-end against the challenge. If you already passed `poc=` to report_solve, mirror it here.
+  7. **Flag** — the exact accepted flag in backticks.
+  8. **Mitigation / takeaway** — 2-4 sentences: what was wrong, how the challenge author should fix it, and the technique worth remembering next time (e.g. "Retry-After races on rate limits," "dp/dq leak in RSA-CRT").
+- ALWAYS attach the exact solver script(s) you ran via the `poc` and `poc_language` fields on `report_solve` — even one-liners (`poc="#!/bin/bash\nexec curl ..."`, `poc_language="bash"`). No abstract descriptions; the script itself is the deliverable.
 - Writeups are for human readers: reproduceable, not a transcript dump. Re-run the minimal commands to confirm the writeup's steps work before finalizing.
 </ctf_rules>
 

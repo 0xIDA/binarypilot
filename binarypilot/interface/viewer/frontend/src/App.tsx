@@ -5,9 +5,6 @@ import {
   Bot,
   Mail,
   ChevronDown,
-  Radar,
-  Rocket,
-  ArrowUpRight,
   History,
 } from "lucide-react";
 import type { Vulnerability, VulnerabilitySeverity } from "@/types/issues";
@@ -34,7 +31,7 @@ import {
   type LoadedRun,
   type RunsPayload,
 } from "@/data/serverSource";
-import { SIGNUP_URL, ctaUrl, trackCta } from "@/lib/cta";
+import { ctaUrl, trackCta } from "@/lib/cta";
 import { runTitle } from "@/lib/target-utils";
 import Sidebar from "@/components/Sidebar";
 import PastRunsView from "@/components/PastRunsView";
@@ -42,7 +39,6 @@ import EmailReportView from "@/components/EmailReportView";
 import { RunDetails } from "@/components/RunDetails";
 import { TrustToast } from "@/components/TrustToast";
 import FeedbackView from "@/components/FeedbackView";
-import { ProInlineCta } from "@/components/ProCta";
 
 export type View = "overview" | "issues" | "agents" | "history" | "email" | "feedback";
 
@@ -216,9 +212,8 @@ export default function App() {
     userSetView("email");
   }, [userSetView]);
 
-  // Sidebar entry keeps the disclosure (first place those users see it);
-  const openEmail = useCallback(() => goEmail(false, "sidebar"), [goEmail]);
-  // the Overview CTA already states the tradeoff, so it starts the flow directly.
+  // Only the Overview CTA routes into the email flow now (no nav item); its
+  // copy already states the tradeoff, so it starts the flow directly.
   const openEmailFromOverview = useCallback(() => goEmail(true, "overview"), [goEmail]);
 
   const openHistory = useCallback(() => {
@@ -243,7 +238,7 @@ export default function App() {
         view={view}
         onSelectView={(v) => {
           // Clicking a sidebar view always lands on that section's top level,
-          // so leaving a specific issue's detail view and clicking "Issues"
+          // so leaving a specific finding's detail view and clicking "Findings"
           // returns to the full findings list.
           setSelectedId(null);
           if (v === "history") openHistory();
@@ -252,10 +247,8 @@ export default function App() {
         issuesCount={run?.vulnerabilities.length ?? 0}
         agentCount={agentCount}
         runCount={runs?.count ?? 0}
-        finished={run?.finished ?? false}
         verified={verified}
         email={auth?.email ?? null}
-        onOpenEmail={openEmail}
         onOpenHistory={openHistory}
         onForget={() => void onForget()}
       />
@@ -285,16 +278,6 @@ export default function App() {
                   onSelect={selectRun}
                 />
               )}
-              <a
-                href={ctaUrl(SIGNUP_URL, "run_in_cloud")}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackCta("run_in_cloud", "topbar")}
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition-opacity hover:opacity-90"
-              >
-                Run in the cloud
-                <ArrowUpRight className="w-3 h-3" aria-hidden="true" />
-              </a>
             </div>
           </div>
         </div>
@@ -355,10 +338,10 @@ export default function App() {
               {/* Tab strip: shown on small screens where the sidebar is hidden. */}
               <div className="flex gap-5 border-b border-[#2a2a2a] lg:hidden">
                 <TabButton active={view === "overview"} onClick={() => userSetView("overview")}>
-                  Pentest Overview
+                  CTF Overview
                 </TabButton>
                 <TabButton active={view === "issues"} onClick={() => userSetView("issues")}>
-                  Issues{run.vulnerabilities.length > 0 ? ` (${run.vulnerabilities.length})` : ""}
+                  Findings{run.vulnerabilities.length > 0 ? ` (${run.vulnerabilities.length})` : ""}
                 </TabButton>
                 {agentCount > 0 && (
                   <TabButton active={view === "agents"} onClick={() => userSetView("agents")}>
@@ -425,11 +408,11 @@ function RunSwitcher({
       <button
         onClick={() => setOpen((o) => !o)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        aria-label="Switch pentest"
+        aria-label="Switch run"
         className="flex items-center gap-2 rounded-lg border border-[#3a3a3a] bg-[rgba(255,255,255,0.05)] px-3 py-2 text-sm text-white transition-colors hover:border-[#555] hover:bg-[rgba(255,255,255,0.09)]"
       >
         <History className="h-4 w-4 flex-shrink-0 text-[#888]" aria-hidden="true" />
-        <span className="flex-shrink-0 text-[#888]">Pentest</span>
+        <span className="flex-shrink-0 text-[#888]">Run</span>
         <span className="max-w-[260px] truncate font-medium">{current}</span>
         <ChevronDown className="h-4 w-4 flex-shrink-0 text-[#aaa]" aria-hidden="true" />
       </button>
@@ -439,7 +422,7 @@ function RunSwitcher({
           style={{ border: "1px solid #3a3a3a", background: "#0a0a0a" }}
         >
           <div className="border-b border-[#222] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#666]">
-            Switch pentest
+            Switch run
           </div>
           {runs.runs.map((r) => {
             const active = r.name === activeRun;
@@ -499,7 +482,7 @@ function SummaryHeader({ summary }: { summary: ParsedRunSummary }) {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-white">
-        {runTitle(summary.targets[0] ?? null, summary.runName ?? summary.runId ?? "Pentest results")}
+        {runTitle(summary.targets[0] ?? null, summary.runName ?? summary.runId ?? "Run results")}
       </h1>
       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#888]">
         {summary.targets.length > 0 && (
@@ -538,23 +521,8 @@ function FindingsList({
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-[#222] bg-[rgba(255,255,255,0.02)] p-8 text-center text-sm text-[#888]">
-          {finished ? "No findings in this run." : "No findings yet. The pentest is still running…"}
+          {finished ? "No findings in this run." : "No findings yet. The run is still going…"}
         </div>
-        {finished && (
-          <div className="rounded-xl border border-[#222] bg-[rgba(255,255,255,0.02)] p-5">
-            <p className="text-sm font-medium text-white">Stay ahead of new exposures</p>
-            <p className="mt-0.5 mb-3 text-xs text-[#666]">
-              Attack surface monitoring catches new exposures for your org over time.
-            </p>
-            <ProInlineCta
-              label="Attack surface monitoring"
-              desc="Continuous coverage for your whole org."
-              slug="asm"
-              surface="empty_state"
-              icon={Radar}
-            />
-          </div>
-        )}
       </div>
     );
   }
@@ -621,7 +589,7 @@ function EmailReportCta({ onOpenEmail }: { onOpenEmail: () => void }) {
           <Mail className="h-4 w-4 text-emerald-400" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Email an encrypted PDF report of this run</p>
+          <p className="text-sm font-semibold text-white">Email the writeup + solve artifacts for this run</p>
           <p className="mt-0.5 text-xs text-[#888]">
             Encrypted with a key only you can see, email verified with a one-time code before sending.
           </p>
@@ -674,8 +642,8 @@ function OverviewTab({
         </div>
       )}
 
-      {/* Primary CTA: the one primary on Overview. Hidden until the run is
-          finished, since a live scan would only email a partial report. */}
+      {/* Primary CTA: gated to finished so a live run doesn't email a partial
+          report. */}
       {finished && (
         <div className="animate-card-in">
           <EmailReportCta onOpenEmail={onOpenEmail} />
@@ -759,23 +727,8 @@ function AgentsTab({ run, canSteer }: { run: LoadedRun; canSteer: boolean }) {
         </div>
       </div>
 
-      {/* Live steering: only in-process while the scan runs. Otherwise omitted. */}
+      {/* Live steering: only in-process while the run is live. Otherwise omitted. */}
       {steerable && <ScanPromptComposer agents={agents} />}
-
-      {/* Re-run always routes to BinaryPilot Cloud. */}
-      <div className="rounded-xl border border-[#222] bg-[rgba(255,255,255,0.02)] p-5">
-        <p className="text-sm font-semibold text-white">Run this pentest with more depth</p>
-        <p className="mt-0.5 text-xs text-[#666]">Re-run this pentest on managed infra in the cloud.</p>
-        <div className="mt-3 flex flex-wrap gap-2.5">
-          <ProInlineCta
-            label="Re-run in BinaryPilot Pro with more depth"
-            desc="Run this pentest on managed infra with more depth."
-            slug="live_scan"
-            surface="agents"
-            icon={Rocket}
-          />
-        </div>
-      </div>
 
       <AgentDetailModal
         open={selectedAgent !== null}

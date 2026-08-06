@@ -323,9 +323,14 @@ async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup ne
         challenge: Challenge identifier as shown by the platform (name or id).
         platform: 'flagyard' or 'htb' (lowercase preferred; normalized).
         flag: The exact flag string that was accepted, e.g. "FlagY{...}" or "HTB{...}".
-        writeup: Markdown solve writeup — Target / Summary / Recon & Analysis /
-            Solve steps (with commands) / Flag / Mitigation note.
-        poc: Optional PoC or solver script (fenced-code friendly).
+        writeup: Markdown writeup, structured professionally: challenge header,
+            TL;DR, methodology, recon & analysis, step-by-step solve with the
+            exact commands/payloads, the PoC block (mirrors `poc` below), flag,
+            and a mitigation/takeaway. See the WRITEUPS section of the system
+            prompt for the contract.
+        poc: The exact solver script(s) run against the challenge (fenced-code
+            friendly, language-tagged via `poc_language`). ALWAYS pass this
+            even for one-liners — the script itself is the deliverable.
         poc_language: Language tag for `poc` (python/bash/...); defaults to none.
         references: Optional newline-separated reference URLs.
         submission_time: Timestamp of the accepted submission, if known.
