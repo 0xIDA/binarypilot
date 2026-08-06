@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.4] — 2026-08-06
+
+### Fixed
+- Stale sandbox image tag mismatch (`first-run 404 on ghcr.io/.../binarypilot-sandbox:1.2.0`). Two layers: runtime default was hard-coded `1.2.0` in `binarypilot/config/settings.py` and the installer hard-coded `1.5.0` in `scripts/install.sh` — if the installer pulled a newer tag than the runtime asked for, `docker.images.pull` happily fetched it but then `inspect_image` 404'd because the runtime's tag wasn't actually local. Now: runtime derives its default image tag from `importlib.metadata.version("binarypilot-agent")` (falls back to `1.5.0` only on editable installs without metadata), and the installer reads `binarypilot --version` after pipx-installs and resolves the matching image tag from it. Package version and image tag are now structurally tied.
+
 ## [1.6.3] — 2026-08-06
 
 ### Added

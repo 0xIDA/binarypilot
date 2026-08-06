@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
 from typing import Literal
 
 from pydantic import AliasChoices, Field
@@ -17,6 +18,18 @@ _BASE_CONFIG = SettingsConfigDict(
     populate_by_name=True,
     extra="ignore",
 )
+
+
+def _default_sandbox_image() -> str:
+    """The sandbox image tag tracks the installed package version so the CLI
+    and the image never drift after upgrades. Falls back to the last known
+    good tag if the package metadata isn't readable (editable installs, dev
+    checkouts)."""
+    try:
+        ver = version("binarypilot-agent")
+    except PackageNotFoundError:
+        ver = "1.5.0"
+    return f"ghcr.io/0xida/binarypilot-sandbox:{ver}"
 
 
 class LlmSettings(BaseSettings):
@@ -103,7 +116,7 @@ class RuntimeSettings(BaseSettings):
     model_config = _BASE_CONFIG
 
     image: str = Field(
-        default="ghcr.io/0xida/binarypilot-sandbox:1.2.0",
+        default_factory=_default_sandbox_image,
         alias="BINARYPILOT_IMAGE",
     )
     backend: str = Field(default="docker", alias="BINARYPILOT_RUNTIME_BACKEND")

@@ -15,7 +15,9 @@ set -euo pipefail
 
 APP=binarypilot
 PKG=binarypilot-agent
-IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.5.0"
+# Image tag tracks the package version — set both at once below so they never drift.
+IMAGE=""
+BINARYPILOT_VERSION=""
 CONFIG_DIR="${BINARYPILOT_CONFIG_DIR:-$HOME/.binarypilot}"
 CONFIG_FILE="${BINARYPILOT_CONFIG_FILE:-$CONFIG_DIR/cli-config.json}"
 TOTAL_STEPS=5
@@ -151,6 +153,15 @@ else
   fi
 fi
 ok "binarypilot $( "$HOME/.local/bin/$APP" --version 2>/dev/null | head -1 || echo installed)"
+
+# Resolve the image tag from the actual installed version so the sandbox pull
+# can never be out of sync with the CLI.
+BINARYPILOT_VERSION=$("$HOME/.local/bin/$APP" --version 2>/dev/null | awk '{print $NF}' | tr -d '[:space:]')
+if [ -z "$BINARYPILOT_VERSION" ]; then
+  BINARYPILOT_VERSION="1.5.0"   # pre-upgrade fallback
+  warn "could not resolve $(tput bold 2>/dev/null)binarypilot --version$(tput sgr0 2>/dev/null) — using image tag 1.5.0"
+fi
+IMAGE="ghcr.io/0xida/binarypilot-sandbox:${BINARYPILOT_VERSION}"
 
 # -----------------------------------------------------------------------------
 # 3. PATH (shell rc)
