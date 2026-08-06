@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.1] — 2026-08-06
+
+### Added
+- `workers/installer/`: Cloudflare Worker that serves `scripts/install.sh` at `idor.lol/` (fetched live from GitHub raw with a 60s edge cache — pushes to main propagate). Deploy + route-binding steps in `workers/installer/DEPLOY.md`.
+
 ## [1.6.0] — 2026-08-06
 
 ### Changed
