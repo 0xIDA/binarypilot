@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import sys
@@ -169,16 +170,25 @@ async def create_or_reuse(
     )
 
     report("Setting up the proxy")
-    caido_endpoint = await session.resolve_exposed_port(_CONTAINER_CAIDO_PORT)
-    scheme = "https" if caido_endpoint.tls else "http"
-    host_caido_url = f"{scheme}://{caido_endpoint.host}:{caido_endpoint.port}"
-    logger.debug("Caido host endpoint resolved: %s", host_caido_url)
+    try:
+        caido_endpoint = await session.resolve_exposed_port(_CONTAINER_CAIDO_PORT)
+        scheme = "https" if caido_endpoint.tls else "http"
+        host_caido_url = f"{scheme}://{caido_endpoint.host}:{caido_endpoint.port}"
+        logger.debug("Caido host endpoint resolved: %s", host_caido_url)
 
-    caido_client = await bootstrap_caido(
-        session,
-        host_url=host_caido_url,
-        container_url=container_caido_url,
-    )
+        caido_client = await bootstrap_caido(
+            session,
+            host_url=host_caido_url,
+            container_url=container_caido_url,
+        )
+    except Exception:
+        # Never leak a half-created container — if Caido bootstrap failed
+        # (dead container, listener never came up, ...), tear the session down
+        # before surfacing the error so the next scan starts from a clean slate.
+        logger.exception("Caido bootstrap failed for scan %s; tearing down container", scan_id)
+        with contextlib.suppress(Exception):
+            await client.delete(session)
+        raise
 
     bundle = {
         "client": client,

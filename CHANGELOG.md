@@ -5,6 +5,11 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [1.6.7] — 2026-08-07
+
+### Fixed
+- Scan crashes with an opaque docker 409 + `agents.sandbox.errors.ExecTransportError` when the sandbox container isn't running by the time Caido bootstrap execs into it (race: container exited or never started, docker-py raises 409 Conflict `container ... is not running`). The Caido readiness loop used to die on the first attempt and surface that raw SDK+docker stack to the CLI. Now `_login_as_guest` catches the transport error, recognizes the dead-container state via the exception chain, raises a clear `RuntimeError`, and `session_manager.create_or_reuse` tears down the half-created container before re-raising so no stopped container leaks into the next scan. Regression coverage in `tests/test_caido_bootstrap.py`.
+
 ## [1.6.6] — 2026-08-06
 
 ### Added

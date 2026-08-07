@@ -19,6 +19,20 @@ from caido_sdk_client import Client, TokenAuthOptions
 from caido_sdk_client.types import CreateProjectOptions
 
 
+def _is_container_dead(err: BaseException) -> bool:
+    # Docker 409 "container ... is not running" surfaces through the SDK as
+    # ExecTransportError wrapping a docker.errors.APIError. Retrying a dead
+    # container can never succeed, so bail out of the readiness loop.
+    seen: set[int] = set()
+    cur: BaseException | None = err
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if "is not running" in str(cur):
+            return True
+        cur = cur.__cause__ or cur.__context__
+    return False
+
+
 if TYPE_CHECKING:
     from agents.sandbox.session import BaseSandboxSession
 
@@ -45,18 +59,26 @@ async def _login_as_guest(
     """
     last_err: str | None = None
     for i in range(1, attempts + 1):
-        result = await session.exec(
-            "curl",
-            "-fsS",
-            "-X",
-            "POST",
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            _LOGIN_AS_GUEST_BODY,
-            f"{container_url}/graphql",
-            timeout=15,
-        )
+        try:
+            result = await session.exec(
+                "curl",
+                "-fsS",
+                "-X",
+                "POST",
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                _LOGIN_AS_GUEST_BODY,
+                f"{container_url}/graphql",
+                timeout=15,
+            )
+        except Exception as exc:
+            if _is_container_dead(exc):
+                raise RuntimeError(f"container is not running: {exc}") from exc
+            last_err = f"exec transport error: {exc}"
+            logger.debug("loginAsGuest attempt %d/%d failed: %s", i, attempts, last_err)
+            await asyncio.sleep(min(2.0 * i, 8.0))
+            continue
         if result.ok():
             try:
                 payload = json.loads(result.stdout)
