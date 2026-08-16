@@ -198,33 +198,62 @@ def htb_submit_machine_flag(ctx: RunContextWrapper, machine_id: int, flag: str) 
 
 
 @function_tool
-def htb_get_machine_info(ctx: RunContextWrapper, machine_id: int) -> str:
-    """Get an HTB machine profile: name, OS, difficulty, active 10.x IP if spawned."""
+def htb_get_machine_info(ctx: RunContextWrapper, machine_id: int | str) -> str:
+    """Get an HTB machine profile: name, OS, difficulty, isSingleFlag, active 10.x IP if spawned.
+
+    Accepts the numeric machine id or the name slug (e.g. 933 or "Cohort").
+    Check ``isSingleFlag`` — single-flag machines have no root.txt, so the
+    solve is complete after the first flag.
+    """
     return _json(client().request("GET", f"/machine/profile/{machine_id}"))
+
+
+def _active_machine(c: HTBClient) -> dict[str, Any] | None:
+    """Current spawned machine per GET /api/v5/virtual_machine/active.
+
+    Field-verified against the HTB web UI: this is the endpoint the site polls
+    for the assigned IP (``info.ip`` is null while ``isSpawning`` is true) and
+    it also carries ``expires_at`` / ``vpn_server_type``.
+    """
+    resp = c.request("GET", "/virtual_machine/active", v5=True)
+    info = resp.get("info") if isinstance(resp, dict) else None
+    return info if isinstance(info, dict) else None
+
+
+def _poll_active_ip(c: HTBClient, wait_seconds: int) -> dict[str, Any]:
+    deadline = time.time() + max(0, wait_seconds)
+    info: dict[str, Any] | None = None
+    while True:
+        info = _active_machine(c)
+        if info and info.get("ip"):
+            return info
+        if time.time() >= deadline:
+            return info or {}
 
 
 @function_tool
 def htb_spawn_machine(ctx: RunContextWrapper, machine_id: int, wait_seconds: int = 30) -> str:
-    """Spawn an HTB machine; polls for the assigned 10.x IP.
+    """Spawn an HTB machine; polls /v5/virtual_machine/active for the assigned 10.x IP.
 
     Use BEFORE touching the target — HTB machines are not pre-running. Machines
     are only reachable over the VPN (BINARYPILOT_VPN_PROFILE profile must match
     the machine's VPN product: machines / starting-point / sherlocks / fortresses
-    / seasonal).
+    / seasonal). The result carries ``expires_at`` — the instance lifetime;
+    ``htb_reset_machine`` refreshes a machine close to expiry.
     """
     c = client()
     start = c.request("POST", "/vm/spawn", json_body={"machine_id": machine_id}, v5=True)
-    info: Any = None
-    deadline = time.time() + max(0, wait_seconds)
-    while True:
-        info = c.request("GET", f"/machine/profile/{machine_id}")
-        ip = (info.get("info") or {}).get("ip") if isinstance(info, dict) else None
-        if ip:
-            break
-        if time.time() >= deadline:
-            break
-        time.sleep(2)
-    return _json({"spawn_result": start, "machine": (info or {}).get("info")})
+    info = _poll_active_ip(c, wait_seconds)
+    if info.get("id") not in (None, machine_id):
+        return _json(
+            {
+                "spawn_result": start,
+                "warning": f"active machine is {info.get('name')} (id={info.get('id')}) — "
+                f"terminate it first via htb_stop_machine",
+                "machine": info,
+            }
+        )
+    return _json({"spawn_result": start, "machine": info})
 
 
 @function_tool
@@ -244,19 +273,11 @@ def htb_reset_machine(ctx: RunContextWrapper, machine_id: int, wait_seconds: int
     """Reset a running HTB machine to its initial state; polls for the 10.x IP.
 
     Use when the box got bricked by an exploit (service crashed, files deleted,
-    lockout) — the reset re-provisions it. Enumerate from scratch afterwards:
-    changes you made are gone.
+    lockout) or is close to ``expires_at`` — the reset re-provisions it and
+    refreshes the lifetime. Enumerate from scratch afterwards: changes you
+    made are gone.
     """
     c = client()
     start = c.request("POST", "/vm/reset", json_body={"machine_id": machine_id}, v5=True)
-    info: Any = None
-    deadline = time.time() + max(0, wait_seconds)
-    while True:
-        info = c.request("GET", f"/machine/profile/{machine_id}")
-        ip = (info.get("info") or {}).get("ip") if isinstance(info, dict) else None
-        if ip:
-            break
-        if time.time() >= deadline:
-            break
-        time.sleep(2)
-    return _json({"reset_result": start, "machine": (info or {}).get("info")})
+    info = _poll_active_ip(c, wait_seconds)
+    return _json({"reset_result": start, "machine": info})

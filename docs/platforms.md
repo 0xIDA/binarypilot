@@ -12,7 +12,7 @@ BinaryPilot targets two CTF platforms out of the box. Both integrations call the
 
 - Challenges: list → `/challenge/list(/retired)`, info → `/challenge/info/<id>`, download → `/challenges/<id>/download_link`, container lifecycle → `POST /container/{start,stop}` with `{challenge_id}`, flag submit → `POST /challenge/own` with `{challenge_id, flag}`.
 - Search: `/search/fetch?query=` over challenges + machines.
-- Machines: profile → `/machine/profile/<id>`, spawn/reset/terminate → `POST /vm/{spawn,reset,terminate}` (v5) with `{machine_id}`, flag submit → `POST /machine/own` (v5) with `{id, flag}`.
+- Machines: profile → `/machine/profile/<id-or-name>`, spawn/reset/terminate → `POST /vm/{spawn,reset,terminate}` (v5) with `{machine_id}`, assigned-IP polling → `GET /virtual_machine/active` (v5, carries `expires_at`/`vpn_server_type`), flag submit → `POST /machine/own` (v5) with `{id, flag}`.
 
 Machines are reachable only over the HTB VPN, brought up inside the sandbox from the profile in `HTB_VPN_OVPN` (see [`integrations.md`](integrations.md#htb-vpn)); challenge Docker instances do **not** need it. A machine yields two flags — `user.txt` on foothold, `root.txt` after privilege escalation — submit each as soon as it's recovered.
 

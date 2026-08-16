@@ -11,20 +11,21 @@ Machines are long-lived multi-service hosts on the HTB OpenVPN network — the o
 ## Non-negotiable order
 
 1. **Access**: `BINARYPILOT_VPN_PROFILE` set → tunnel is up (verify ONCE with `ip a | grep tun`; log at `/tmp/openvpn.log` if in doubt). Unset → stop and ask the user for `HTB_VPN_OVPN=/path/to/<product>.ovpn` (per-product, NOT interchangeable).
-2. **Spawn**: `htb_spawn_machine(machine_id)` → returns the assigned 10.x IP. `ping -c2 <ip>`: no reply = wrong VPN product for this machine, stop and report.
-3. **Enumerate** (two-pass, bounded):
+2. **Check the profile first**: `htb_get_machine_info` (id or name slug) → OS, and `isSingleFlag`: single-flag machines have NO root.txt — the solve is complete after the one flag.
+3. **Spawn**: `htb_spawn_machine(machine_id)` → polls `/v5/virtual_machine/active` and returns the assigned 10.x IP + `expires_at` (instance lifetime — `htb_reset_machine` refreshes a box close to expiry). `ping -c2 <ip>`: no reply = wrong VPN product for this machine, stop and report.
+4. **Enumerate** (two-pass, bounded):
    - `nmap -n -Pn --open --top-ports 100 -T4 --max-retries 1 --host-timeout 90s -oA nmap_quick <ip>`
    - `nmap -n -Pn -p- --open --min-rate 2000 --max-retries 1 -oA nmap_all <ip>`
    - Version/scripts on open ports: `nmap -n -Pn -p<ports> -sV -sC --script-timeout 60s <ip>`
    - UDP only when TCP is dry: `nmap -sU --top-ports 20 --open <ip>`
-4. **Service-level enum**: web (below), SMB (`smbclient -L //ip -N`, `enum4linux -a`, `crackmapexec smb ip --shares`), SNMP (`snmpwalk -v2c -c public ip`), FTP/anonymous, NFS (`showmount -e ip`), SMTP, LDAP, Redis, MSSQL/MySQL.
-5. **Web**: visit every vhost/port in the browser first; `ffuf -w /usr/share/seclists/Discovery/Web-Content/raft-medium-words.txt -u http://ip/FUZZ` for content, plus extensions (`php,html,txt,bak,old,zip`); note the stack before attacking (a WordPress → `wpscan`, a Tomcat `/manager` → credential stuffing, not SSTI).
-6. **Foothold**: exploit the found service, land a shell, stabilize (`python3 -c 'import pty;pty.spawn("/bin/bash")'`), and read the user flag:
+5. **Service-level enum**: web (below), SMB (`smbclient -L //ip -N`, `enum4linux -a`, `crackmapexec smb ip --shares`), SNMP (`snmpwalk -v2c -c public ip`), FTP/anonymous, NFS (`showmount -e ip`), SMTP, LDAP, Redis, MSSQL/MySQL.
+6. **Web**: visit every vhost/port in the browser first; `ffuf -w /usr/share/seclists/Discovery/Web-Content/raft-medium-words.txt -u http://ip/FUZZ` for content, plus extensions (`php,html,txt,bak,old,zip`); note the stack before attacking (a WordPress → `wpscan`, a Tomcat `/manager` → credential stuffing, not SSTI).
+7. **Foothold**: exploit the found service, land a shell, stabilize (`python3 -c 'import pty;pty.spawn("/bin/bash")'`), and read the user flag:
    - Linux: `/home/<user>/user.txt` (or `grep -r user.txt` home dirs)
    - Windows: `C:\Users\<user>\Desktop\user.txt`
-7. **Submit user flag**: `htb_submit_machine_flag(machine_id, flag)` → on acceptance `report_solve(kind='machine', flag_type='user')`. Machine flags are BARE 32-char hex (MD5-shaped, no `HTB{}` wrapper on regular machines).
-8. **Privesc** (below) → root flag (`/root/root.txt`, `C:\Users\Administrator\Desktop\root.txt`) → submit the same way with `flag_type='root'`.
-9. **Close out**: `htb_stop_machine(machine_id)` to free the slot, then `finish_solve`.
+8. **Submit user flag**: `htb_submit_machine_flag(machine_id, flag)` → on acceptance `report_solve(kind='machine', flag_type='user')`. Machine flags are BARE 32-char hex (MD5-shaped, no `HTB{}` wrapper on regular machines).
+9. **Privesc** (below) → root flag (`/root/root.txt`, `C:\Users\Administrator\Desktop\root.txt`) → submit the same way with `flag_type='root'` (skip on single-flag machines).
+10. **Close out**: `htb_stop_machine(machine_id)` to free the slot, then `finish_solve`.
 
 ## Linux privesc checklist (run in this order)
 
