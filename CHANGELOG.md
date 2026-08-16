@@ -7,6 +7,9 @@ work under their own headings.
 
 ## [Unreleased]
 
+### Changed
+- Machine spawn/reset aligned with field-verified HTB API behavior (captured from the web UI): `htb_spawn_machine` / `htb_reset_machine` poll `GET /v5/virtual_machine/active` for the assigned 10.x IP — the same endpoint the site uses (`info.ip` is null while `isSpawning` is true) — and surface `expires_at` (instance lifetime; reset refreshes it). Spawn warns when a different machine is already active (one active machine per user). `htb_get_machine_info` accepts the name slug as well as the numeric id (`/machine/profile/Cohort` works), and its docstring flags `isSingleFlag` — single-flag machines have no root.txt; prompts/skill updated to check it before hunting the root flag.
+
 ### Added
 - Full HTB machine (box) solving via the sandbox VPN. `htb_stop_machine` (`POST /vm/terminate`, v5) and `htb_reset_machine` (`POST /vm/reset`, v5, re-polls the 10.x IP) join the machine toolset; `HTB_VPN_OVPN` is now a first-class `PlatformSettings` field (settable via env or `~/.binarypilot/cli-config.json`; the docker runtime reads live env first, then settings). Machine-by-URL specs now resolve their slug to the numeric `machine_id` + canonical name host-side (numeric slugs pass through; no fuzzy fallback — failing loudly beats spawning the wrong box). New `ctf/machine-solving` skill (two-pass nmap, service enum, Linux/Windows privesc checklists, dual-flag discipline); machine targets get a mandated 8-phase task line (spawn → enum → foothold → user.txt → submit → privesc → root.txt → submit → stop).
 - `report_solve` gains `kind` (`challenge`|`machine`) and `flag_type` (`user`|`root`) so machine solves are labeled end-to-end (solves.json entries + writeup headers). Omitted fields keep the old shape — challenge solves are unchanged.

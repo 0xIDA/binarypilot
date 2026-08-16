@@ -1,8 +1,13 @@
-"""HTB machine tools — flag validation, submit payloads, stop/reset lifecycle.
+"""HTB machine tools — flag validation, submit payloads, spawn/stop/reset lifecycle.
 
 Regression: ``htb_submit_machine_flag`` used to require the ``HTB{`` prefix,
 which rejected every regular-machine flag (user.txt/root.txt are bare 32-hex
 MD5-style hashes) before the API was ever called.
+
+Spawn/reset IP polling is verified against captured HTB web-UI traffic:
+GET /api/v5/virtual_machine/active is the authoritative source for the
+assigned IP (``info.ip`` is null while ``isSpawning`` is true) and carries
+``expires_at`` / ``vpn_server_type``.
 """
 
 from __future__ import annotations
@@ -20,9 +25,13 @@ if TYPE_CHECKING:
 
 
 class _FakeClient:
-    def __init__(self, *, profile_ip: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        active_machine: dict[str, Any] | None = None,
+    ) -> None:
         self.calls: list[dict[str, Any]] = []
-        self._profile_ip = profile_ip
+        self._active = active_machine
 
     def request(  # signature mirrors the real client for duck-typing
         self,
@@ -35,8 +44,8 @@ class _FakeClient:
         timeout: int = 60,  # noqa: ARG002
     ) -> Any:
         self.calls.append({"method": method, "path": path, "json_body": json_body, "v5": v5})
-        if path.startswith("/machine/profile"):
-            return {"info": {"ip": self._profile_ip} if self._profile_ip else {}}
+        if path == "/virtual_machine/active":
+            return {"info": self._active} if self._active else {"info": None}
         return {"isSuccess": True}
 
 
@@ -122,16 +131,50 @@ async def test_stop_machine_posts_vm_terminate(monkeypatch: pytest.MonkeyPatch) 
     ]
 
 
+async def test_spawn_polls_v5_active_for_ip(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The UI polls /v5/virtual_machine/active for the assigned IP — so do we."""
+    fake = _FakeClient(
+        active_machine={
+            "id": 933,
+            "name": "Cohort",
+            "ip": "10.129.244.174",
+            "isSpawning": False,
+            "expires_at": "2026-08-16 13:22:26",
+            "vpn_server_type": "Machines",
+        }
+    )
+    result = await _invoke(htb.htb_spawn_machine, fake, monkeypatch, machine_id=933, wait_seconds=0)
+    assert result["machine"]["ip"] == "10.129.244.174"
+    assert fake.calls[0] == {
+        "method": "POST",
+        "path": "/vm/spawn",
+        "json_body": {"machine_id": 933},
+        "v5": True,
+    }
+    poll = [c for c in fake.calls[1:] if c["path"] == "/virtual_machine/active"]
+    assert poll and all(c["v5"] for c in poll)
+    assert "warning" not in result
+
+
+async def test_spawn_warns_when_other_machine_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One active machine per user — spawning while another runs must surface it."""
+    fake = _FakeClient(active_machine={"id": 1, "name": "Lame", "ip": "10.10.10.5"})
+    result = await _invoke(htb.htb_spawn_machine, fake, monkeypatch, machine_id=933, wait_seconds=0)
+    assert result["warning"]
+    assert "Lame" in result["warning"]
+    assert result["machine"]["id"] == 1
+
+
 async def test_reset_machine_posts_vm_reset_and_repolls_ip(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _FakeClient(profile_ip="10.10.10.3")
+    fake = _FakeClient(active_machine={"id": 42, "name": "Anchor", "ip": "10.10.10.3"})
     result = await _invoke(htb.htb_reset_machine, fake, monkeypatch, machine_id=42, wait_seconds=0)
-    assert result["machine"] == {"ip": "10.10.10.3"}
+    assert result["machine"]["ip"] == "10.10.10.3"
     assert fake.calls[0] == {
         "method": "POST",
         "path": "/vm/reset",
         "json_body": {"machine_id": 42},
         "v5": True,
     }
-    assert any(c["path"] == "/machine/profile/42" for c in fake.calls[1:])
+    assert any(c["path"] == "/virtual_machine/active" for c in fake.calls[1:])
