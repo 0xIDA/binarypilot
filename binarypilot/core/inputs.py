@@ -47,7 +47,32 @@ def _format_ctf_challenge_line(details: dict[str, Any]) -> str:
     prefix = f"{platform} {kind}"
     if name:
         prefix += f" '{name}'"
-    if kind in {"machine", "sherlock", "fortress", "starting-point", "seasonal"}:
+    if kind in {"machine", "starting-point"}:
+        return (
+            f"{prefix} — id {ident}. HTB 10.x target reachable only over the OpenVPN "
+            f"network. If BINARYPILOT_VPN_PROFILE is set in the sandbox env the tunnel "
+            f"is already up — verify once with `ip a | grep tun`, never restart it. "
+            f"If unset, ask the user to export HTB_VPN_OVPN=/path/to/<{kind}>.ovpn on "
+            f"the host — HTB issues a separate .ovpn per VPN product (machines, "
+            f"starting-point, sherlocks, fortresses, seasonal) that is NOT "
+            f"interchangeable. Machines yield TWO flags, both expected: user.txt on "
+            f"foothold and root.txt after privilege escalation (bare 32-hex hashes, "
+            f"not HTB{{...}}). Phases in strict order: "
+            f"(1) htb_spawn_machine(machine_id) and wait for the assigned 10.x IP, "
+            f"(2) ping -c2 the IP once — if it fails the VPN product is wrong for this "
+            f"machine, stop and report, (3) full enumeration: nmap all ports + versions "
+            f"+ scripts, (4) service/web enumeration to find the foothold, "
+            f"(5) initial access and read the user flag file "
+            f"(Linux: /home/<user>/user.txt; Windows: C:\\Users\\<user>\\Desktop\\user.txt), "
+            f"(6) submit the user flag via htb_submit_machine_flag, then report_solve "
+            f"(kind='machine', flag_type='user'), (7) privilege escalation and read the "
+            f"root flag (/root/root.txt or C:\\Users\\Administrator\\Desktop\\root.txt), "
+            f"(8) submit the root flag the same way (flag_type='root'), then "
+            f"htb_stop_machine and finish_solve. If only one flag lands, still "
+            f"report_solve it and report exactly where you got stuck. Never move flag "
+            f"submission before actual recovery."
+        )
+    if kind in {"sherlock", "fortress", "seasonal"}:
         return (
             f"{prefix} — id {ident}. HTB 10.x target on the OpenVPN network. "
             f"If BINARYPILOT_VPN_PROFILE is set in the sandbox env, the tunnel is already up: "

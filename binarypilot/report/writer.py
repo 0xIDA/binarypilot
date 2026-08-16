@@ -119,11 +119,16 @@ def _slug(text: str, max_len: int = 60) -> str:
 
 
 def render_solve_md(solve: dict[str, Any]) -> str:
+    kind = solve.get("kind")
+    flag_type = solve.get("flag_type")
+    target_line = f"**Challenge:** {solve.get('challenge', '?')}  "
+    if kind == "machine":
+        target_line += f"\n**Kind:** HTB machine ({flag_type or 'user'} flag)  "
     lines = [
         f"# {solve['title']}",
         "",
         f"**Platform:** {solve.get('platform', '?')}  ",
-        f"**Challenge:** {solve.get('challenge', '?')}  ",
+        target_line,
         f"**Flag:** `{solve.get('flag', '?')}`  ",
         f"**Submitted:** {solve.get('submission_time', solve['timestamp'])}  ",
         f"**Agent:** {solve.get('agent_name') or solve.get('agent_id') or 'unknown'}  ",

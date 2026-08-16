@@ -35,4 +35,15 @@ Web traffic in the sandbox flows through a Caido MITM proxy by default. For CTF-
 
 ## HTB VPN
 
-Machines and some Fortress/Endgame targets require the HTB VPN reachable from the sandbox network. Attach the host to HTB's OpenVPN before starting the run — the sandbox bridges to the host's network for VPN-reachable targets. Docker-instance challenges don't need it.
+Machines (and some Fortress/Endgame targets) are reachable only over the HTB OpenVPN network. Point BinaryPilot at your downloaded profile — the sandbox container runs its own OpenVPN client; the host itself does not need to be attached:
+
+```bash
+export HTB_VPN_OVPN=/abs/path/to/machines_eu-release-1.ovpn
+binarypilot --challenge https://app.hackthebox.com/machines/Lame
+```
+
+What happens: the profile is bind-mounted **read-only** into the container at `/vpn/<name>.ovpn`, `/dev/net/tun` is passed through, and the image entrypoint auto-starts `openvpn --daemon`, waits up to 30 s for `tun0`, and sets `BINARYPILOT_VPN_PROFILE` so agents know the tunnel is up (log at `/tmp/openvpn.log` inside the sandbox). Docker-instance challenges don't need any of this.
+
+HTB issues a **separate `.ovpn` per VPN product** — `machines`, `starting-point`, `sherlocks`, `fortresses`, `seasonal` — and they are NOT interchangeable. Download the one matching your target from the HTB site (VPN page), or the 10.x target won't answer ping.
+
+The path can also live in `~/.binarypilot/cli-config.json` under `"HTB_VPN_OVPN"` (it's a first-class setting; `persist_current` picks it up from the environment). It is consumed host-side only — never injected into the container env beyond the in-container `/vpn/...` profile path.

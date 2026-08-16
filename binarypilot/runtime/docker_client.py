@@ -113,15 +113,26 @@ def _apply_log_limits(create_kwargs: dict[str, Any]) -> None:
 def _apply_vpn_support(create_kwargs: dict[str, Any]) -> None:
     """Wire an HTB OpenVPN profile into the container when HTB_VPN_OVPN points at one.
 
-    The profile is bind-mounted read-only at /vpn/<basename>.ovpn inside the
-    sandbox; the image entrypoint auto-starts `openvpn --config` on any
-    /vpn/*.ovpn file it finds. /dev/net/tun must exist inside the container for
-    tun-device VPN; bridge GRE/bridge VPNs that don't use tun do not need it.
+    The profile path comes from settings (env var HTB_VPN_OVPN or
+    ~/.binarypilot/cli-config.json). Live env is read first — the settings
+    cache is a snapshot, so a profile exported after process start must still
+    win (env > file). The profile is bind-mounted read-only at
+    /vpn/<basename>.ovpn inside the sandbox; the image entrypoint auto-starts
+    `openvpn --config` on any /vpn/*.ovpn file it finds. /dev/net/tun must
+    exist inside the container for tun-device VPN; bridge GRE/bridge VPNs that
+    don't use tun do not need it.
     """
-    profile = os.environ.get("HTB_VPN_OVPN", "").strip()
+    from pathlib import Path  # noqa: PLC0415
+
+    from binarypilot.config import load_settings  # noqa: PLC0415
+
+    # Live env first, then settings: the settings cache is a snapshot, so a
+    # profile exported after process start must still win (env > file).
+    profile = (
+        os.environ.get("HTB_VPN_OVPN", "") or load_settings().platforms.htb_vpn_ovpn or ""
+    ).strip()
     if not profile:
         return
-    from pathlib import Path
 
     p = Path(profile).expanduser()
     if not p.is_file() or p.suffix != ".ovpn":

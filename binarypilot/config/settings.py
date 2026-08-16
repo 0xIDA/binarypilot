@@ -148,6 +148,11 @@ class PlatformSettings(BaseSettings):
         default="https://api.flagyard.com/api", alias="FLAGYARD_API_BASE"
     )
     htb_token: str | None = Field(default=None, alias="HTB_TOKEN")
+    # Host-side path to an HTB OpenVPN profile (.ovpn) for machine solving.
+    # Read by the docker runtime to bind-mount the profile into the sandbox;
+    # deliberately NOT forwarded into the container env (the host path is
+    # meaningless there — the entrypoint sees BINARYPILOT_VPN_PROFILE instead).
+    htb_vpn_ovpn: str | None = Field(default=None, alias="HTB_VPN_OVPN")
 
     def sandbox_env(self) -> dict[str, str]:
         """Env vars to inject into the sandbox container (set values only)."""

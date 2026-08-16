@@ -155,6 +155,44 @@ def _exact_or_raise(name: str, results: list[dict[str, Any]], platform: str) -> 
 # Public API
 # ---------------------------------------------------------------------------
 
+_MACHINE_SLUG_NORM_RE = re.compile(r"[^a-z0-9]")
+
+
+def _resolve_machine_slug(details: dict[str, Any]) -> None:
+    """Machine URLs carry a name slug, but the agent tools want the numeric id.
+
+    Resolve it host-side via /search/fetch so the root task carries machine_id
+    plus the canonical name; numeric slugs are ids already.
+    """
+    slug = str(details.get("machine") or "")
+    if not slug:
+        return
+    if slug.isdigit():
+        details["machine_id"] = int(slug)
+        return
+
+    def _norm(value: str) -> str:
+        return _MACHINE_SLUG_NORM_RE.sub("", value.lower())
+
+    matches = [m for m in _search_htb(slug) if m.get("kind") == "machine"]
+    exact = [m for m in matches if _norm(m.get("name") or "") == _norm(slug)]
+    # URL slugs name one machine — no fuzzy fallback like the name-search path.
+    # Spawning the wrong box silently is worse than failing loudly.
+    if len(exact) == 1:
+        details["machine_id"] = exact[0]["id"]
+        details["name"] = exact[0].get("name") or slug
+        return
+    if len(exact) > 1:
+        listed = ", ".join(f"{m.get('name')} (id={m.get('id')})" for m in exact[:8])
+        raise ResolutionError(f"ambiguous htb machine {slug!r}: {len(exact)} matches — {listed}")
+    if matches:
+        closest = ", ".join(f"{m.get('name')} (id={m.get('id')})" for m in matches[:5])
+        raise ResolutionError(
+            f"no exact htb machine matches {slug!r} (searched: {closest}). "
+            f"Pass the machine name with --platform htb or check the URL."
+        )
+    raise ResolutionError(f"no htb machine matches {slug!r}")
+
 
 def resolve_challenge(spec: str, platform: str | None = None) -> dict[str, Any]:
     """Resolve a user-supplied challenge specifier (name or URL) to a target entry.
@@ -168,6 +206,8 @@ def resolve_challenge(spec: str, platform: str | None = None) -> dict[str, Any]:
     parsed = parse_challenge_url(spec)
     if parsed:
         details: dict[str, Any] = {"specifier": spec, **parsed}
+        if parsed.get("kind") == "machine":
+            _resolve_machine_slug(details)
         return {
             "type": "ctf_challenge",
             "original": spec,

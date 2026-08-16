@@ -12,9 +12,9 @@ BinaryPilot targets two CTF platforms out of the box. Both integrations call the
 
 - Challenges: list → `/challenge/list(/retired)`, info → `/challenge/info/<id>`, download → `/challenges/<id>/download_link`, container lifecycle → `POST /container/{start,stop}` with `{challenge_id}`, flag submit → `POST /challenge/own` with `{challenge_id, flag}`.
 - Search: `/search/fetch?query=` over challenges + machines.
-- Machines: profile → `/machine/profile/<id>`, flag submit → `POST /machine/own` (v5) with `{id, flag}`.
+- Machines: profile → `/machine/profile/<id>`, spawn/reset/terminate → `POST /vm/{spawn,reset,terminate}` (v5) with `{machine_id}`, flag submit → `POST /machine/own` (v5) with `{id, flag}`.
 
-Machine flow requires the HTB VPN reachable from the sandbox network; challenge Docker instances do **not** need it.
+Machines are reachable only over the HTB VPN, brought up inside the sandbox from the profile in `HTB_VPN_OVPN` (see [`integrations.md`](integrations.md#htb-vpn)); challenge Docker instances do **not** need it. A machine yields two flags — `user.txt` on foothold, `root.txt` after privilege escalation — submit each as soon as it's recovered.
 
 ### Tools exposed to the agent
 
@@ -22,6 +22,7 @@ Machine flow requires the HTB VPN reachable from the sandbox network; challenge 
 - `htb_spawn_challenge_container`, `htb_stop_challenge_container`
 - `htb_download_challenge`
 - `htb_submit_challenge_flag`, `htb_submit_machine_flag`
+- `htb_get_machine_info`, `htb_spawn_machine`, `htb_stop_machine`, `htb_reset_machine`
 
 ## FlagYard
 
@@ -53,7 +54,8 @@ Instance spawn/stop is idempotent per user — the API returns the currently-run
 
 ## Flag discipline
 
-- **HTB:** `HTB{...}` — case-sensitive.
+- **HTB challenges:** `HTB{...}` — case-sensitive.
+- **HTB machines:** bare 32-char hex hash from `user.txt`/`root.txt` (no wrapper) on regular machines; `HTB{...}` on some products (starting-point). Both shapes accepted by the submit tool.
 - **FlagYard:** `FlagY{...}` — case-sensitive.
 The submit tools validate format before calling out. Platforms rate-limit submissions — BinaryPilot replays once on acceptance failure only.
 

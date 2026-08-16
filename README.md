@@ -68,6 +68,9 @@ export HTB_TOKEN="***"                       # HackTheBox App Token
 export FLAGYARD_USERNAME="you"
 export FLAGYARD_PASSWORD="***"               # or FLAGYARD_ACCESS_TOKEN
 
+# HTB machines (optional) — VPN profile for 10.x targets
+export HTB_VPN_OVPN="/path/to/machines_eu-release-1.ovpn"
+
 # Sandbox image — defaults to match the installed CLI version; override only
 # for pinning or custom images.
 export BINARYPILOT_IMAGE="ghcr.io/0xida/binarypilot-sandbox:1.6.4"

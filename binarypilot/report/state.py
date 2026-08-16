@@ -339,6 +339,8 @@ class ReportState:
         poc_language: str | None = None,
         references: str | None = None,
         submission_time: str | None = None,
+        kind: str | None = None,
+        flag_type: str | None = None,
         agent_id: str | None = None,
         agent_name: str | None = None,
     ) -> str:
@@ -346,7 +348,8 @@ class ReportState:
 
         Callers are expected to invoke this only AFTER the platform submit tool
         returned a success — the flag recorded here is the accepted one, not a
-        candidate.
+        candidate. Machines record one solve per accepted flag with
+        ``kind='machine'`` and ``flag_type`` in {'user', 'root'}.
         """
         solve_id = f"solve-{len(self.solves) + 1:04d}"
         solve: dict[str, Any] = {
@@ -366,6 +369,10 @@ class ReportState:
             solve["references"] = references.strip()
         if submission_time:
             solve["submission_time"] = submission_time.strip()
+        if kind and kind != "challenge":
+            solve["kind"] = kind
+        if flag_type:
+            solve["flag_type"] = flag_type
         if agent_id:
             solve["agent_id"] = agent_id
         if agent_name:

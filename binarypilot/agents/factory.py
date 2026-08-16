@@ -574,10 +574,12 @@ def _register_ctf_tools() -> None:
         htb_get_challenge_info,
         htb_get_machine_info,
         htb_list_challenges,
+        htb_reset_machine,
         htb_search_content,
         htb_spawn_challenge_container,
         htb_spawn_machine,
         htb_stop_challenge_container,
+        htb_stop_machine,
         htb_submit_challenge_flag,
         htb_submit_machine_flag,
     )
@@ -601,6 +603,8 @@ def _register_ctf_tools() -> None:
         htb_submit_machine_flag,
         htb_get_machine_info,
         htb_spawn_machine,
+        htb_stop_machine,
+        htb_reset_machine,
     )
 
 

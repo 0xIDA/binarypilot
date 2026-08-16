@@ -8,6 +8,7 @@ htb-mcp-server (0xIDA/htb-mcp-server).
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any
 
@@ -19,6 +20,16 @@ from binarypilot.config import load_settings
 
 API_V4 = "https://labs.hackthebox.com/api/v4"
 API_V5 = "https://labs.hackthebox.com/api/v5"
+
+# Regular HTB machines place bare MD5 hashes in user.txt/root.txt; some VPN
+# products (starting-point and friends) use HTB{...} instead. Accept both.
+_MACHINE_HEX_FLAG_RE = re.compile(r"^[0-9a-fA-F]{32}$")
+
+
+def _machine_flag_error(flag: str) -> str | None:
+    if flag.startswith("HTB{") or _MACHINE_HEX_FLAG_RE.match(flag.strip()):
+        return None
+    return "flag must be the bare 32-hex hash from user.txt/root.txt (or HTB{...} on some products)"
 
 
 class HTBClient:
@@ -167,15 +178,21 @@ def htb_submit_challenge_flag(ctx: RunContextWrapper, challenge_id: int, flag: s
 
 @function_tool
 def htb_submit_machine_flag(ctx: RunContextWrapper, machine_id: int, flag: str) -> str:
-    """Submit a HackTheBox machine flag (user or root, format: HTB{...}).
+    """Submit a HackTheBox machine flag (user or root) after actually recovering it.
 
-    Requires the machine running and the host/sandbox on the HTB VPN.
+    Machine flags are the bare 32-hex hashes found in /home/<user>/user.txt and
+    /root/root.txt (some VPN products use HTB{...} instead — both accepted).
+    Submit the user flag on foothold, then the root flag after privilege
+    escalation; HTB infers user-vs-root server-side.
+
+    Requires the machine running and the sandbox on the HTB VPN.
     """
-    if not flag.startswith("HTB{"):
-        return _json({"isSuccess": False, "error": "flag must match HTB{...}"})
+    error = _machine_flag_error(flag)
+    if error:
+        return _json({"isSuccess": False, "error": error})
     return _json(
         client().request(
-            "POST", "/machine/own", json_body={"id": machine_id, "flag": flag}, v5=True
+            "POST", "/machine/own", json_body={"id": machine_id, "flag": flag.strip()}, v5=True
         )
     )
 
@@ -208,3 +225,38 @@ def htb_spawn_machine(ctx: RunContextWrapper, machine_id: int, wait_seconds: int
             break
         time.sleep(2)
     return _json({"spawn_result": start, "machine": (info or {}).get("info")})
+
+
+@function_tool
+def htb_stop_machine(ctx: RunContextWrapper, machine_id: int) -> str:
+    """Stop/terminate a running HTB machine (frees the spawn slot).
+
+    Call when the machine is fully solved (both flags submitted) or when
+    abandoning the run; pairs with finish_solve like challenge-container stops.
+    """
+    return _json(
+        client().request("POST", "/vm/terminate", json_body={"machine_id": machine_id}, v5=True)
+    )
+
+
+@function_tool
+def htb_reset_machine(ctx: RunContextWrapper, machine_id: int, wait_seconds: int = 30) -> str:
+    """Reset a running HTB machine to its initial state; polls for the 10.x IP.
+
+    Use when the box got bricked by an exploit (service crashed, files deleted,
+    lockout) — the reset re-provisions it. Enumerate from scratch afterwards:
+    changes you made are gone.
+    """
+    c = client()
+    start = c.request("POST", "/vm/reset", json_body={"machine_id": machine_id}, v5=True)
+    info: Any = None
+    deadline = time.time() + max(0, wait_seconds)
+    while True:
+        info = c.request("GET", f"/machine/profile/{machine_id}")
+        ip = (info.get("info") or {}).get("ip") if isinstance(info, dict) else None
+        if ip:
+            break
+        if time.time() >= deadline:
+            break
+        time.sleep(2)
+    return _json({"reset_result": start, "machine": (info or {}).get("info")})
