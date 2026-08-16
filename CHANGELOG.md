@@ -5,6 +5,21 @@ All notable changes to BinaryPilot, sorted newest-first. The format is loose
 Versioning — fixes go under Fixed, new behavior under Added, prompts/skills
 work under their own headings.
 
+## [Unreleased]
+
+### Added
+- Full HTB machine (box) solving via the sandbox VPN. `htb_stop_machine` (`POST /vm/terminate`, v5) and `htb_reset_machine` (`POST /vm/reset`, v5, re-polls the 10.x IP) join the machine toolset; `HTB_VPN_OVPN` is now a first-class `PlatformSettings` field (settable via env or `~/.binarypilot/cli-config.json`; the docker runtime reads live env first, then settings). Machine-by-URL specs now resolve their slug to the numeric `machine_id` + canonical name host-side (numeric slugs pass through; no fuzzy fallback — failing loudly beats spawning the wrong box). New `ctf/machine-solving` skill (two-pass nmap, service enum, Linux/Windows privesc checklists, dual-flag discipline); machine targets get a mandated 8-phase task line (spawn → enum → foothold → user.txt → submit → privesc → root.txt → submit → stop).
+- `report_solve` gains `kind` (`challenge`|`machine`) and `flag_type` (`user`|`root`) so machine solves are labeled end-to-end (solves.json entries + writeup headers). Omitted fields keep the old shape — challenge solves are unchanged.
+
+### Fixed
+- Machine flag validation rejected every real machine flag: `user.txt`/`root.txt` on regular HTB machines are bare 32-hex MD5-style hashes, but `htb_submit_machine_flag` required the `HTB{` prefix, so legitimate flags died locally before the API call. The submit tool now accepts both shapes (bare 32-hex and `HTB{...}` for products like starting-point) and strips whitespace before submitting.
+
+### Prompts & skills
+- FLAG FORMAT section now distinguishes machine flags from challenge flags; "only one flag per challenge" corrected (machines yield user + root); MACHINE ACCESS procedure extended to the full foothold→privesc→dual-submission flow incl. stop/reset; `ctf-solver-methods` nmap anti-pattern scoped to challenge instances only (machines require full enumeration).
+
+### Docs
+- `docs/integrations.md` HTB VPN section rewritten to the real model (profile mounted read-only into the sandbox, in-container openvpn autostart, per-product profiles) — it previously described the pre-1.5.0 host-attached-VPN model. `docs/platforms.md` machine tool list completed (`htb_get_machine_info`, `htb_spawn_machine`, `htb_stop_machine`, `htb_reset_machine`) and machine flag format documented. README env block + `.env.example` mention `HTB_VPN_OVPN`.
+
 ## [1.6.7] — 2026-08-07
 
 ### Fixed

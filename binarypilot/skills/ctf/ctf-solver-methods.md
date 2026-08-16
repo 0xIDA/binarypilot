@@ -26,4 +26,4 @@ Concrete application per category:
 - **Forensics**: `file` every artifact → `binwalk` → `foremost` → meta-extraction of hidden / extended attrs → strings on embedded objects. Never grep through `strings` on a 1GB artifact without first knowing its container.
 - **Misc/OSINT**: pivot chain-of-evidence; each hop cites `source -> extracted evidence -> next pivot`. No check-by-luck.
 
-**Anti-patterns (explicit)**: launching a fuzzer with a "try common payloads" attitude; fuzzing Directory parameters by brute force on web challenges; hosting the challenge source locally to fuzz inputs; running nmap / vuln scanners on a CTF instance; submitting flags on suspicion rather than verification.
+**Anti-patterns (explicit)**: launching a fuzzer with a "try common payloads" attitude; fuzzing Directory parameters by brute force on web challenges; hosting the challenge source locally to fuzz inputs; running nmap / vuln scanners on a **challenge instance** (challenge containers expose exactly one service — machines are the opposite: see the `machine-solving` skill, which REQUIRES full nmap enumeration); submitting flags on suspicion rather than verification.

@@ -29,7 +29,7 @@ The skills are dynamically injected into the agent's system prompt, allowing it 
 
 | Category | Purpose |
 |----------|---------|
-| **`/ctf`** | CTF playbooks: `crypto`, `pwn`, `rev`, `web`, `forensics`, `osint`, `misc` |
+| **`/ctf`** | CTF playbooks: `crypto`, `pwn`, `rev`, `web`, `forensics`, `osint`, `misc`, `machine-solving` (HTB boxes: VPN-gated 10.x targets, user.txt/root.txt dual-flag flow) |
 | **`/vulnerabilities`** | Web-attack references kept for web-CTF: SQLi, XSS, SSTI, SSRF, XXE, RCE, deserialization, JWT, smuggling, file uploads, business logic, path traversal, race conditions, BFLA, LLM prompt injection, header injection |
 | **`/protocols`** | Protocol-specific patterns (GraphQL, OAuth) |
 | **`/tooling`** | Command-line playbooks for sandbox tools (agent_browser, ffuf, httpx, katana, naabu, nmap, nuclei, python, semgrep, sqlmap, subfinder) |

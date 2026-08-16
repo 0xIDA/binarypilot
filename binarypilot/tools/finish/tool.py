@@ -310,6 +310,8 @@ async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup ne
     poc_language: str | None = None,
     references: str | None = None,
     submission_time: str | None = None,
+    kind: str = "challenge",
+    flag_type: str | None = None,
 ) -> str:
     """Record a confirmed CTF solve — the platform has accepted the flag.
 
@@ -334,6 +336,10 @@ async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup ne
         poc_language: Language tag for `poc` (python/bash/...); defaults to none.
         references: Optional newline-separated reference URLs.
         submission_time: Timestamp of the accepted submission, if known.
+        kind: 'challenge' (default) or 'machine' — machines are HTB boxes with
+            a user.txt and a root.txt flag.
+        flag_type: For kind='machine': 'user' (foothold) or 'root' (after
+            privilege escalation). Omit for challenges.
     """
     if not flag.strip() or not writeup.strip():
         return json.dumps({"success": False, "error": "flag and writeup are required"})
@@ -344,6 +350,20 @@ async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup ne
                 "success": False,
                 "error": f"platform must be 'flagyard' or 'htb' (got {platform!r})",
             }
+        )
+    normalized_kind = (kind or "challenge").strip().lower()
+    if normalized_kind not in {"challenge", "machine"}:
+        return json.dumps(
+            {"success": False, "error": "kind must be 'challenge' or 'machine'"},
+        )
+    normalized_flag_type = (flag_type or "").strip().lower() or None
+    if normalized_flag_type is not None and normalized_flag_type not in {
+        "user",
+        "root",
+        "challenge",
+    }:
+        return json.dumps(
+            {"success": False, "error": "flag_type must be 'user' or 'root' (machines)"},
         )
 
     from binarypilot.report.state import get_global_report_state
@@ -362,6 +382,8 @@ async def report_solve(  # noqa: PLR0917 - solve fields mirror what a writeup ne
         poc_language=poc_language,
         references=references,
         submission_time=submission_time,
+        kind=normalized_kind,
+        flag_type=normalized_flag_type,
         agent_id=inner.get("agent_id"),
         agent_name=inner.get("agent_name"),
     )
