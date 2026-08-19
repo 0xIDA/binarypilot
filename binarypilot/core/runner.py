@@ -82,6 +82,7 @@ def _compose_root_instructions_override(
     skills: list[str],
     scan_mode: str,
     is_whitebox: bool,
+    ctf_mode: bool,
     interactive: bool,
     system_prompt_context: dict[str, Any],
 ) -> str | None:
@@ -93,6 +94,7 @@ def _compose_root_instructions_override(
         scan_mode=scan_mode,
         is_whitebox=is_whitebox,
         is_root=True,
+        ctf_mode=ctf_mode,
         interactive=interactive,
         system_prompt_context=system_prompt_context,
     )
@@ -252,6 +254,7 @@ async def run_binarypilot_scan(
         targets = scan_config.get("targets") or []
         scan_mode = str(scan_config.get("scan_mode") or "deep")
         is_whitebox = any(t.get("type") == "local_code" for t in targets)
+        ctf_mode = bool(scan_config.get("ctf_mode", False))
         skills = list(scan_config.get("skills") or [])
         root_task = build_root_task(scan_config)
         model_settings = make_model_settings(
@@ -285,6 +288,7 @@ async def run_binarypilot_scan(
             skills=skills,
             scan_mode=scan_mode,
             is_whitebox=is_whitebox,
+            ctf_mode=ctf_mode,
             interactive=interactive,
             system_prompt_context=root_context,
         )
@@ -295,6 +299,7 @@ async def run_binarypilot_scan(
             is_root=True,
             scan_mode=scan_mode,
             is_whitebox=is_whitebox,
+            ctf_mode=ctf_mode,
             interactive=interactive,
             chat_completions_tools=chat_completions_tools,
             system_prompt_context=root_context,
@@ -313,6 +318,7 @@ async def run_binarypilot_scan(
         child_agent_builder = make_child_factory(
             scan_mode=scan_mode,
             is_whitebox=is_whitebox,
+            ctf_mode=ctf_mode,
             interactive=interactive,
             chat_completions_tools=chat_completions_tools,
             system_prompt_context=scope_context,

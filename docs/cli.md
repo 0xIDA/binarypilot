@@ -28,6 +28,27 @@ binarypilot --challenge https://app.hackthebox.com/challenges/15
 
 Constraints: `--challenge` is exclusive with `--target`, `--target-list`, `--resume`.
 
+## Generic CTF mode
+
+| Flag | Meaning |
+|------|---------|
+| `--instruction "..."` | Challenge objective, constraints, credentials, and expected flag format. |
+| `--instruction-file PATH` | Read the generic CTF instruction from a file. |
+
+Examples:
+
+```bash
+binarypilot \
+  --target http://challenge.example:8080 \
+  --instruction "Find and verify the flag. Expected format: CTF{...}."
+
+binarypilot \
+  --target ./challenge-files \
+  --instruction-file ./solve-plan.md
+```
+
+Generic mode does not use HTB/FlagYard challenge metadata or submission APIs.
+
 ## Behavior control
 
 | Flag | Meaning | Default |

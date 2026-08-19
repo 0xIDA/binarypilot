@@ -63,6 +63,7 @@ def render_system_prompt(
     scan_mode: str = "deep",
     is_whitebox: bool = False,
     is_root: bool = False,
+    ctf_mode: bool = False,
     interactive: bool = False,
     system_prompt_context: dict[str, Any] | None = None,
 ) -> str:
@@ -92,6 +93,7 @@ def render_system_prompt(
             available_skills=get_available_skills(),
             interactive=interactive,
             is_root=is_root,
+            ctf_mode=ctf_mode,
             system_prompt_context=system_prompt_context or {},
             **skill_content,
         )

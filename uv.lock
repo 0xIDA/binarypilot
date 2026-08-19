@@ -245,6 +245,80 @@ wheels = [
 ]
 
 [[package]]
+name = "binarypilot-agent"
+version = "1.6.7"
+source = { editable = "." }
+dependencies = [
+    { name = "caido-sdk-client" },
+    { name = "cryptography" },
+    { name = "cvss" },
+    { name = "docker" },
+    { name = "litellm" },
+    { name = "openai" },
+    { name = "openai-agents", extra = ["litellm"] },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pypdf" },
+    { name = "reportlab" },
+    { name = "requests" },
+    { name = "rich" },
+    { name = "textual" },
+]
+
+[package.optional-dependencies]
+bedrock = [
+    { name = "boto3" },
+]
+vertex = [
+    { name = "google-auth" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pyinstaller", marker = "python_full_version < '3.15'" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.28.0" },
+    { name = "caido-sdk-client", specifier = ">=0.2.0" },
+    { name = "cryptography", specifier = ">=48.0.1,<49" },
+    { name = "cvss", specifier = ">=3.2" },
+    { name = "docker", specifier = ">=7.1.0" },
+    { name = "google-auth", marker = "extra == 'vertex'", specifier = ">=2.0.0" },
+    { name = "litellm" },
+    { name = "openai", specifier = ">=2.26.0,<2.45" },
+    { name = "openai-agents", extras = ["litellm"], specifier = "==0.14.6" },
+    { name = "pydantic", specifier = ">=2.11.3" },
+    { name = "pydantic-settings", specifier = ">=2.13.0" },
+    { name = "pypdf", specifier = ">=5.0" },
+    { name = "reportlab", specifier = ">=4.0" },
+    { name = "requests", specifier = ">=2.32.0" },
+    { name = "rich" },
+    { name = "textual", specifier = ">=6.0.0" },
+]
+provides-extras = ["vertex", "bedrock"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.8.3" },
+    { name = "mypy", specifier = ">=1.16.0" },
+    { name = "pre-commit", specifier = ">=4.2.0" },
+    { name = "pyinstaller", marker = "python_full_version >= '3.12' and python_full_version < '3.15'", specifier = ">=6.17.0" },
+    { name = "pyright", specifier = ">=1.1.401" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "ruff", specifier = ">=0.11.13" },
+]
+
+[[package]]
 name = "boto3"
 version = "1.43.36"
 source = { registry = "https://pypi.org/simple" }
@@ -2407,80 +2481,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e9/88/35e4d27d9177d7df76d060e0a18f69c6c5794c96960c94042e20a12c8ba2/stevedore-5.8.0.tar.gz", hash = "sha256:b49867b32ca3016e94100e68dbf26e72aa7b8708d0a3f73c08aeb220370ac715", size = 514710, upload-time = "2026-05-18T09:15:27.731Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/ac/19f9941c74add59d17694930ec8105d5eddeee4ce56dd8632b765ca16d6c/stevedore-5.8.0-py3-none-any.whl", hash = "sha256:88eede9e66ca80e34085b9174e2327da2c61ac91f24f70e41c3ad76e4bb4872b", size = 54553, upload-time = "2026-05-18T09:15:25.82Z" },
-]
-
-[[package]]
-name = "binarypilot-agent"
-version = "1.4.1"
-source = { editable = "." }
-dependencies = [
-    { name = "caido-sdk-client" },
-    { name = "cryptography" },
-    { name = "cvss" },
-    { name = "docker" },
-    { name = "litellm" },
-    { name = "openai" },
-    { name = "openai-agents", extra = ["litellm"] },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pypdf" },
-    { name = "reportlab" },
-    { name = "requests" },
-    { name = "rich" },
-    { name = "textual" },
-]
-
-[package.optional-dependencies]
-bedrock = [
-    { name = "boto3" },
-]
-vertex = [
-    { name = "google-auth" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "bandit" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pyinstaller", marker = "python_full_version < '3.15'" },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.28.0" },
-    { name = "caido-sdk-client", specifier = ">=0.2.0" },
-    { name = "cryptography", specifier = ">=48.0.1,<49" },
-    { name = "cvss", specifier = ">=3.2" },
-    { name = "docker", specifier = ">=7.1.0" },
-    { name = "google-auth", marker = "extra == 'vertex'", specifier = ">=2.0.0" },
-    { name = "litellm" },
-    { name = "openai", specifier = ">=2.26.0,<2.45" },
-    { name = "openai-agents", extras = ["litellm"], specifier = "==0.14.6" },
-    { name = "pydantic", specifier = ">=2.11.3" },
-    { name = "pydantic-settings", specifier = ">=2.13.0" },
-    { name = "pypdf", specifier = ">=5.0" },
-    { name = "reportlab", specifier = ">=4.0" },
-    { name = "requests", specifier = ">=2.32.0" },
-    { name = "rich" },
-    { name = "textual", specifier = ">=6.0.0" },
-]
-provides-extras = ["vertex", "bedrock"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "bandit", specifier = ">=1.8.3" },
-    { name = "mypy", specifier = ">=1.16.0" },
-    { name = "pre-commit", specifier = ">=4.2.0" },
-    { name = "pyinstaller", marker = "python_full_version >= '3.12' and python_full_version < '3.15'", specifier = ">=6.17.0" },
-    { name = "pyright", specifier = ">=1.1.401" },
-    { name = "pytest", specifier = ">=8.3" },
-    { name = "pytest-asyncio", specifier = ">=0.24" },
-    { name = "ruff", specifier = ">=0.11.13" },
 ]
 
 [[package]]

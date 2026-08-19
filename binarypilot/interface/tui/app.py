@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from pygments.token import _TokenType
     from textual.timer import Timer
 
+from rich import box
 from rich.align import Align
 from rich.console import Group
 from rich.panel import Panel
@@ -112,10 +113,12 @@ class SplashScreen(Static):  # type: ignore[misc]
     ALLOW_SELECT = False
     PRIMARY_CYAN = "#22d3ee"
     BANNER = (
-        "   ___  _____  _____   _____  _____  ______   ____  ______\n"
-        "  / _ )/  _/ |/ / _ | / _ \\ \\/ / _ \\/  _/ /  / __ \\/_  __/\n"
-        " / _  |/ //    / __ |/ , _/\\  / ___// // /__/ /_/ / / /\n"
-        "/____/___/_/|_/_/ |_/_/|_| /_/_/  /___/____/\\____/ /_/"
+        " ____  _                      ____  _ _       _   \n"
+        "| __ )(_)_ __   __ _ _ __ _   _|  _ \\(_) | ___ | |_ \n"
+        "|  _ \\| | '_ \\ / _` | '__| | | | |_) | | |/ _ \\| __|\n"
+        "| |_) | | | | | (_| | |  | |_| |  __/| | | (_) | |_ \n"
+        "|____/|_|_| |_|\\__, |_|   \\__, |_|   |_|_|\\___/ \\__|\n"
+        "                |___/       |___/"
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -161,9 +164,8 @@ class SplashScreen(Static):  # type: ignore[misc]
 
     def _build_panel(self, start_line: Text) -> Panel:
         rows = [
-            Align.center(Text(self.BANNER.strip("\n"), style=self.PRIMARY_CYAN, justify="center")),
+            Align.center(Text(self.BANNER, style=self.PRIMARY_CYAN, justify="center")),
             Align.center(Text(" ")),
-            Align.center(self._build_welcome_text()),
             Align.center(self._build_version_text()),
             Align.center(self._build_tagline_text()),
             Align.center(Text(" ")),
@@ -179,7 +181,12 @@ class SplashScreen(Static):  # type: ignore[misc]
                 )
             )
 
-        return Panel.fit(Group(*rows), border_style=self.PRIMARY_CYAN, padding=(1, 6))
+        return Panel.fit(
+            Group(*rows),
+            border_style=self.PRIMARY_CYAN,
+            box=box.ROUNDED,
+            padding=(1, 6),
+        )
 
     @staticmethod
     def _build_model_warning_text(model: str) -> Text:
@@ -192,25 +199,19 @@ class SplashScreen(Static):  # type: ignore[misc]
         return text
 
     def _build_url_text(self) -> Text:
-        return Text("b0f.ru", style=Style(color=self.PRIMARY_CYAN, bold=True))
-
-    def _build_welcome_text(self) -> Text:
-        text = Text("Welcome to ", style=Style(color="white", bold=True))
-        text.append("BinaryPilot", style=Style(color=self.PRIMARY_CYAN, bold=True))
-        text.append("!", style=Style(color="white", bold=True))
-        return text
+        return Text("LOCAL SANDBOX  |  READY", style=Style(color=self.PRIMARY_CYAN, bold=True))
 
     def _build_version_text(self) -> Text:
         return Text(f"v{self._version}", style=Style(color="white", dim=True))
 
     def _build_tagline_text(self) -> Text:
         return Text(
-            "Autonomous CTF solver — HackTheBox + FlagYard",
+            "Autonomous solving, local-first and evidence-driven",
             style=Style(color="white", dim=True),
         )
 
     def _build_start_line_text(self, phase: int) -> Text:
-        full_text = "Starting BinaryPilot Agent"
+        full_text = "Initializing solve workspace"
         text_len = len(full_text)
 
         shine_pos = phase % (text_len + 8)
@@ -851,6 +852,7 @@ class BinaryPilotTUIApp(App):  # type: ignore[misc]
             "scope_mode": getattr(args, "scope_mode", "auto"),
             "diff_base": getattr(args, "diff_base", None),
             "resume_instruction": getattr(args, "user_explicit_instruction", None) or "",
+            "ctf_mode": bool(getattr(args, "ctf_mode", False)),
         }
 
     def _setup_cleanup_handlers(self) -> None:

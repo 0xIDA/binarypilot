@@ -102,6 +102,7 @@ def build_root_task(scan_config: dict[str, Any]) -> str:
     targets = scan_config.get("targets", []) or []
     diff_scope = scan_config.get("diff_scope") or {}
     user_instructions = scan_config.get("user_instructions", "") or ""
+    ctf_mode = bool(scan_config.get("ctf_mode", False))
 
     sections: dict[str, list[str]] = {
         "Repositories": [],
@@ -109,6 +110,7 @@ def build_root_task(scan_config: dict[str, Any]) -> str:
         "URLs": [],
         "IP Addresses": [],
         "CTF Challenges": [],
+        "Generic CTF Targets": [],
     }
 
     for target in targets:
@@ -137,6 +139,15 @@ def build_root_task(scan_config: dict[str, Any]) -> str:
         elif ttype == "ctf_challenge":
             line = _format_ctf_challenge_line(details)
             sections["CTF Challenges"].append(f"- {line}")
+        elif ctf_mode:
+            target_value = (
+                details.get("target_url")
+                or details.get("target_ip")
+                or details.get("target_path")
+                or details.get("target_repo")
+                or target.get("original", "")
+            )
+            sections["Generic CTF Targets"].append(f"- {target_value}")
 
     parts: list[str] = []
     for label, items in sections.items():
@@ -189,9 +200,14 @@ def build_scope_context(scan_config: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "scope_source": "system_scan_config",
-        "authorization_source": "binarypilot_platform_verified_targets",
+        "authorization_source": (
+            "user_supplied_generic_ctf_target"
+            if scan_config.get("ctf_mode")
+            else "binarypilot_platform_verified_targets"
+        ),
         "authorized_targets": authorized,
         "user_instructions_do_not_expand_scope": True,
+        "ctf_mode": bool(scan_config.get("ctf_mode", False)),
     }
 
 

@@ -1,6 +1,6 @@
 # BinaryPilot
 
-### Autonomous CTF solver. Resolves, instances, solves, submits, writes the writeup. HackTheBox + FlagYard.
+### Autonomous CTF solver. Solve any target from a target and instruction, with optional HackTheBox + FlagYard integrations.
 
 <br/>
 
@@ -14,6 +14,7 @@
 ## What it does
 
 - You give it a challenge — a name or a URL on HackTheBox or FlagYard.
+- Or give it any CTF target plus your own solving instruction with `--target` and `--instruction`.
 - It resolves the challenge, starts its instance, downloads the attachments, and solves it with a tree of specialized agents.
 - Every candidate flag is verified, regex-checked for the platform's format, submitted via the platform API, and recorded.
 - Every accepted flag produces a markdown writeup in `binarypilot_runs/<run>/writeups/`.
@@ -36,6 +37,10 @@ export FLAGYARD_USERNAME="you" FLAGYARD_PASSWORD="***"
 binarypilot --challenge https://app.hackthebox.com/challenges/15
 binarypilot --challenge "Lame" --platform htb
 binarypilot --challenge "Web 01" --platform flagyard
+
+# Generic CTF target + instruction
+binarypilot --target http://challenge.local:8080 \
+  --instruction "Find and verify the flag. The expected format is CTF{...}."
 ```
 
 First run pulls the sandbox image matching the installed CLI version
@@ -94,6 +99,10 @@ binarypilot -n --challenge ...
 
 # Steer with a hint
 binarypilot --challenge "Lame" --platform htb --instruction "Focus on ret2libc, not shellcode"
+
+# Generic CTF target
+binarypilot --target 10.10.10.25 \
+  --instruction "Solve the web service on port 80 and recover the flag."
 
 # Resume a previous run
 binarypilot --resume 2026-08-03-lame

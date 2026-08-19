@@ -29,6 +29,28 @@ binarypilot --challenge https://ctf.flagyard.com/labs/12/challenges/34
 
 Lab-only URL (FlagYard) starts the lab's default challenge — same flow with the first incomplete challenge in the lab.
 
+## Solve a generic CTF target
+
+Use `--target` together with `--instruction` when the challenge is hosted outside HackTheBox or FlagYard, or when
+you want to provide the challenge context yourself. The target may be a URL,
+domain, IP address, local directory, repository, archive, or other supported
+target. The instruction becomes the challenge brief and defines the expected
+flag format and solve constraints.
+
+```bash
+binarypilot \
+  --target http://challenge.example:8080 \
+  --instruction "Enumerate the web app, recover the flag, and verify it matches CTF{...}."
+
+binarypilot \
+  --target ./challenge-files \
+  --instruction-file ./solve-plan.md
+```
+
+Generic mode does not call HTB/FlagYard resolution or submission APIs. If the
+CTF has no integrated submission endpoint, BinaryPilot records the recovered
+flag and reproducible solve steps in the final report for manual submission.
+
 ## Steer the solve
 
 `--instruction "short hint"` passes a free-text message to the root agent. Use it to bias the approach (categories to try first, creds you know, bypasses to skip).

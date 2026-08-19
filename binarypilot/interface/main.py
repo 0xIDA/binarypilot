@@ -715,7 +715,6 @@ Examples:
         "'https://ctf.flagyard.com/labs/12/challenges/34'). "
         "Requires --platform when a name is given. Cannot combine with --target/--target-list.",
     )
-
     args = parser.parse_args()
 
     if args.update:
@@ -735,6 +734,15 @@ Examples:
                     parser.error(f"Instruction file '{instruction_path}' is empty")
         except Exception as e:
             parser.error(f"Failed to read instruction file '{instruction_path}': {e}")
+
+    # A target plus an operator instruction is the generic CTF flow. The
+    # platform-specific flow remains explicit through --challenge.
+    args.ctf_mode = bool(
+        not args.resume
+        and not args.challenge
+        and bool(args.target or args.target_list)
+        and bool(args.instruction)
+    )
 
     args.user_explicit_instruction = args.instruction if args.resume else None
 
@@ -758,7 +766,6 @@ Examples:
         parser.error("Cannot combine --challenge with --target/--target-list.")
     if args.challenge and args.resume:
         parser.error("Cannot combine --challenge with --resume.")
-
     if not args.resume:
         if not args.target and not args.target_list and not args.challenge:
             parser.error(
@@ -824,6 +831,7 @@ def _persist_run_record(args: argparse.Namespace) -> None:
         "diff_scope": getattr(args, "diff_scope", {"active": False}),
         "scope_mode": args.scope_mode,
         "diff_base": args.diff_base,
+        "ctf_mode": bool(getattr(args, "ctf_mode", False)),
     }
     write_run_record(run_dir, run_record)
 
