@@ -6,7 +6,10 @@ import contextlib
 import inspect
 import os
 import time
+import uuid
+from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 from agents import (
     set_default_openai_api,
@@ -488,17 +491,62 @@ def _configure_openrouter_attribution(model_name: str | None) -> None:
     litellm.headers = {**existing, **_OPENROUTER_ATTRIBUTION_HEADERS}  # type: ignore[assignment]
 
 
+_OPENCODE_HOST = "opencode.ai"
+_opencode_session_id: str | None = None
+
+
+def _is_opencode_endpoint(api_base: str | None) -> bool:
+    """Whether the LLM gateway is OpenCode's (Zen / Go), which enforces client
+    identification; see https://opencode.ai/docs/go/#where-can-i-use-it."""
+    if not api_base:
+        return False
+    host = (urlsplit(api_base.strip()).hostname or "").lower()
+    return host == _OPENCODE_HOST or host.endswith(f".{_OPENCODE_HOST}")
+
+
+def _binarypilot_user_agent() -> str:
+    try:
+        return f"binarypilot/{version('binarypilot-agent')}"
+    except PackageNotFoundError:
+        return "binarypilot"
+
+
+def _opencode_default_headers() -> dict[str, str]:
+    """Headers OpenCode's gateway requires from coding-agent clients.
+
+    Completion requests without a stable ``x-opencode-session`` id are rejected
+    with HTTP 400 ``MissingSessionID``, and the gateway asks agents to identify
+    with a product user agent rather than a generic SDK name. The session id is
+    fixed per process: rotating it mid-scan — e.g. when the report-dedupe step
+    re-applies this configuration — would restart the gateway's prompt-cache
+    routing for the rest of the conversation.
+    """
+    global _opencode_session_id  # noqa: PLW0603
+    if _opencode_session_id is None:
+        _opencode_session_id = uuid.uuid4().hex
+    return {
+        "x-opencode-session": _opencode_session_id,
+        "User-Agent": _binarypilot_user_agent(),
+    }
+
+
 def _configure_extra_headers(llm: LlmSettings) -> None:
-    """Send user-provided default headers on every LLM request.
+    """Send default headers on every LLM request.
 
     Some OpenAI-compatible endpoints require extra HTTP headers (e.g. request
     attribution or tenant routing) alongside the bearer token. Users supply
     them via ``LLM_EXTRA_HEADERS``; they are applied to both routing paths:
     the LiteLLM route (``litellm.headers``) and the SDK-native OpenAI route
     (a default client carrying ``default_headers``), so they take effect
-    regardless of the ``BINARYPILOT_LLM`` prefix.
+    regardless of the ``BINARYPILOT_LLM`` prefix. OpenCode's gateway gets
+    client-identification headers injected automatically (its session header
+    is mandatory there); user-supplied headers win over both.
     """
-    headers = llm.extra_headers
+    headers: dict[str, str] = {}
+    if _is_opencode_endpoint(llm.api_base):
+        headers.update(_opencode_default_headers())
+    if llm.extra_headers:
+        headers.update(llm.extra_headers)
     if not headers:
         return
     _merge_litellm_headers(headers)

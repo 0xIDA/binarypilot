@@ -19,6 +19,7 @@ export BINARYPILOT_LLM="openai/gpt-5.4"     # or "anthropic/claude-sonnet-4-6", 
 | Vertex AI | `GOOGLE_APPLICATION_CREDENTIALS` |
 | Azure OpenAI | `AZURE_API_KEY` + `AZURE_API_BASE` + `AZURE_API_VERSION` |
 | Bedrock | AWS creds via env or shared config |
+| OpenCode Go | `LLM_API_KEY` |
 | Perplexity (web research tool) | `PERPLEXITY_API_KEY` |
 | Local model (Ollama, LMStudio, vLLM) | `LLM_API_BASE=http://localhost:11434` + whatever your server wants |
 
@@ -33,6 +34,10 @@ binarypilot --challenge "Lame" --platform htb
 binarypilot auth status
 binarypilot auth logout
 ```
+
+## OpenCode Go
+
+`https://opencode.ai/zen/go/v1` (the OpenCode Go subscription, e.g. `omen-alpha`, `deepseek-v4-flash`) requires per-conversation client identification and rejects generic SDK user agents. BinaryPilot sends `x-opencode-session` (stable per run) and a `binarypilot/<version>` user agent automatically whenever `LLM_API_BASE` points at an `opencode.ai` host — no extra configuration. `LLM_EXTRA_HEADERS` can still override either value.
 
 ## Reasoning effort
 

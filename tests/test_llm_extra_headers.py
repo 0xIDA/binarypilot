@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING
 
 import litellm
 import pytest
 from agents.models import _openai_shared
 
-from binarypilot.config import loader
+from binarypilot.config import loader, models
 from binarypilot.config.loader import load_settings
 from binarypilot.config.models import configure_sdk_model_defaults
 
@@ -25,6 +26,7 @@ _ENV_KEYS = ["BINARYPILOT_LLM", "LLM_API_KEY", "LLM_API_BASE", "LLM_EXTRA_HEADER
 def _reset(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     for key in _ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(models, "_opencode_session_id", None)
     monkeypatch.setattr(loader, "_cached", None)
     monkeypatch.setattr(loader, "_override", None)
 
@@ -91,6 +93,59 @@ def test_no_extra_headers_leaves_litellm_headers_untouched(monkeypatch: pytest.M
     monkeypatch.setenv("BINARYPILOT_LLM", "openai/some-model")
     monkeypatch.setenv("LLM_API_BASE", "https://gateway.example/v1")
     monkeypatch.setenv("LLM_API_KEY", "token")
+
+    configure_sdk_model_defaults(load_settings())
+
+    assert litellm.headers is None
+
+
+def _opencode_env(monkeypatch: pytest.MonkeyPatch, api_base: str) -> None:
+    monkeypatch.setenv("BINARYPILOT_LLM", "omen-alpha")
+    monkeypatch.setenv("LLM_API_KEY", "token")
+    monkeypatch.setenv("LLM_API_BASE", api_base)
+
+
+def test_opencode_endpoint_injects_session_and_user_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _opencode_env(monkeypatch, "https://opencode.ai/zen/go/v1")
+
+    configure_sdk_model_defaults(load_settings())
+
+    current: object = litellm.headers
+    assert isinstance(current, dict)
+    assert re.fullmatch(r"[0-9a-f]{32}", current["x-opencode-session"])
+    assert current["User-Agent"].startswith("binarypilot/")
+    client = _openai_shared.get_default_openai_client()
+    assert client is not None
+    assert client.default_headers.get("x-opencode-session") == current["x-opencode-session"]
+    assert client.default_headers.get("User-Agent") == current["User-Agent"]
+
+
+def test_opencode_session_stable_across_reconfiguration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _opencode_env(monkeypatch, "https://opencode.ai/zen/go/v1")
+
+    configure_sdk_model_defaults(load_settings())
+    first = litellm.headers["x-opencode-session"]
+    # The report-dedupe step re-applies the same configuration mid-scan.
+    configure_sdk_model_defaults(load_settings())
+
+    assert litellm.headers["x-opencode-session"] == first
+
+
+def test_opencode_session_header_user_override_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    _opencode_env(monkeypatch, "https://opencode.ai/zen/go/v1")
+    monkeypatch.setenv("LLM_EXTRA_HEADERS", json.dumps({"x-opencode-session": "pinned"}))
+
+    configure_sdk_model_defaults(load_settings())
+
+    assert litellm.headers["x-opencode-session"] == "pinned"
+
+
+def test_lookalike_host_gets_no_session_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    _opencode_env(monkeypatch, "https://opencode.ai.example.com/v1")
 
     configure_sdk_model_defaults(load_settings())
 

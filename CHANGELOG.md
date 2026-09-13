@@ -16,6 +16,7 @@ work under their own headings.
 
 ### Fixed
 - Machine flag validation rejected every real machine flag: `user.txt`/`root.txt` on regular HTB machines are bare 32-hex MD5-style hashes, but `htb_submit_machine_flag` required the `HTB{` prefix, so legitimate flags died locally before the API call. The submit tool now accepts both shapes (bare 32-hex and `HTB{...}` for products like starting-point) and strips whitespace before submitting.
+- OpenCode Go gateway calls failed with HTTP 400 `MissingSessionID` ("Request is missing x-opencode-session"). When `LLM_API_BASE` points at an `opencode.ai` host, completion requests now carry a stable per-process `x-opencode-session` id and a `binarypilot/<version>` user agent on both the LiteLLM and SDK-native routes; `LLM_EXTRA_HEADERS` still overrides either. (The gateway also 401s with `CreditsError` when the workspace has no subscription allowance or balance — unrelated to the header, surfaced only after it.)
 
 ### Prompts & skills
 - FLAG FORMAT section now distinguishes machine flags from challenge flags; "only one flag per challenge" corrected (machines yield user + root); MACHINE ACCESS procedure extended to the full foothold→privesc→dual-submission flow incl. stop/reset; `ctf-solver-methods` nmap anti-pattern scoped to challenge instances only (machines require full enumeration).
